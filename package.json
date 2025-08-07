@@ -1,0 +1,53 @@
+{
+	"name": "safe-recovery-service-sdk",
+	"author": {
+		"name": "Candidelabs",
+		"url": "https://candide.dev"
+	},
+	"version": "0.0.01",
+	"description": "Safe Recovery service SDK by Candidelabs",
+	"main": "dist/index.js",
+	"module": "dist/index.m.js",
+	"unpkg": "dist/index.umd.js",
+	"types": "dist/index.d.ts",
+	"scripts": {
+		"build": "rimraf dist && microbundle --tsconfig tsconfig.json --no-sourcemap",
+		"clean": "rimraf dist",
+		"test": "jest --verbose"
+	},
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/candidelabs/safe-recovery-service-sdk.git"
+	},
+	"files": [
+		"dist"
+	],
+	"keywords": [
+		"Recovery",
+		"Account Abstraction",
+		"4337",
+		"Useroperation",
+		"SDK"
+	],
+	"license": "MIT",
+	"publishConfig": {
+		"access": "public",
+		"tag": "latest"
+	},
+	"dependencies": {
+		"abstractionkit": "^0.2.28",
+		"isomorphic-unfetch": "^4.0.2",
+		"siwe": "^3.0.0"
+	},
+	"devDependencies": {
+		"@types/jest": "^30.0.0",
+		"dotenv": "^16.4.5",
+		"jest": "^30.0.5",
+		"microbundle": "^0.15.1",
+		"rimraf": "^5.0.10",
+		"supertest": "^7.1.4",
+		"ts-jest": "^29.4.0",
+		"typescript": "^5.1.6",
+		"viem": "^2.33.2"
+	}
+}
