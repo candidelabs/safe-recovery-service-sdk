@@ -14,7 +14,7 @@ require('dotenv').config()
 jest.setTimeout(300000);
 
 const chainId = BigInt(process.env.CHAIN_ID as string)
-const serviceUrl =process.env.SERVICE_URL as string
+const serviceUrl =process.env.RECOVERY_SERVICE_URL as string
 const bundlerUrl = process.env.BUNDLER_URL as string
 const nodeUrl = process.env.NODE_URL as string
 const paymasterUrl = process.env.PAYMASTER_URL as string;
