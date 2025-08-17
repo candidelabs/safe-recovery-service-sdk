@@ -135,3 +135,34 @@ export async function sendHttpRequest(
 	}
 }
 
+export type NetworkConfig = {
+    name: string,
+    chainId: number,
+    moduleAddress: SocialRecoveryModuleGracePeriodSelector,
+    sponsorships: {
+        execution: {
+            enabled: boolean,
+            rateLimit: {
+                maxPerAccount: number,
+                period: number
+            }
+        },
+        finalization: {
+            enabled: boolean
+        }
+    },
+    alertChannels: ("email" | "sms")[]
+}
+
+export async function getNetworkConfig(
+    serviceEndpoint: string, chainId: bigint
+): Promise<NetworkConfig> {
+     const netwrokConfig = await sendHttpRequest(
+        `${serviceEndpoint}/v1/config/getNetworkConfig`,
+        {
+            chainId: parseInt(chainId.toString()),
+        },
+        "get"
+    ) as NetworkConfig;
+    return netwrokConfig;
+}
