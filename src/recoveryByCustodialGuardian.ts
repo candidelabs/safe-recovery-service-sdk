@@ -1,0 +1,489 @@
+import { generateSIWEMessage, sendHttpRequest } from "./utils";
+import { SafeRecoveryServiceSdkError, ensureError } from "./errors";
+
+export type Registration = {
+    id: string;
+    account: string;
+    chainId: number;
+    channel: string;
+    target: string;
+    guardian: string;
+    createdAt: string;
+    updatedAt: string;
+}
+
+export type SignatureRequest = {
+    requestId: string;
+    requiredVerifications: number;
+    auths: {
+        challengeId: string;
+        channel: string;
+        target: string;
+    }[];
+}
+
+/**
+ * RecoveryByCustodialGuardian provides an interface to interact with the
+ * Safe Recovery Service using custodial guardians (via email or SMS).
+ *
+ * It supports:
+ * - Registering and removing recovery methods (email or SMS).
+ * - Submitting OTP challenges to complete registration.
+ * - Requesting and executing account recovery flows.
+ * - Managing SIWE (Sign-In With Ethereum) statements for all flows.
+ *
+ * @example
+ * ```ts
+ * const recovery = new RecoveryByCustodialGuardian(
+ *  "https://service.endpoint",
+ *  1n //chainId
+ * );
+ *
+ * // Create a SIWE statement for email registration
+ * const siweMessage = recovery.createRegistrationToEmailRecoverySiweStatementToSign(
+ *   "0xSafeAccount",
+ *   "user@example.com"
+ * );
+ *
+ * // Register an email recovery method
+ * const challengeId = await recovery.createRegistrationToEmailRecovery(
+ *   "0xSafeAccount",
+ *   "user@example.com",
+ *   "0xSignature"
+ * );
+ * ```
+ *
+ * @throws {SafeRecoveryServiceSdkError}
+ */
+export class RecoveryByCustodialGuardian {
+  readonly serviceEndpoint;
+  readonly chainId;
+  readonly siweDomain;
+  readonly siweUri;
+
+  /**
+   * Creates a new RecoveryByCustodialGuardian instance.
+   * @param serviceEndpoint - Base URL of the recovery service.
+   * @param chainId - Blockchain chain ID.
+   * @param overrides - Optional overrides for SIWE domain and URI.
+   */
+  constructor(
+      serviceEndpoint: string,
+      chainId: bigint,
+      overrides: {
+        siweDomain?: string,
+        siweUri?: string
+      } = {}
+  ) {
+      this.serviceEndpoint = serviceEndpoint;
+      this.chainId = chainId;
+      this.siweDomain = overrides.siweDomain?? "service://safe-recovery-service";
+      this.siweUri = overrides.siweUri?? "service://safe-recovery-service";
+  }
+
+  /**
+   * Generates a SIWE statement for retrieving all authentication methods.
+   * @param accountAddress - a safe account address.
+   * @returns SIWE message string.
+   */
+  getRegistrationsSiweStatementToSign(accountAddress: string): string{
+    let statement =
+        "I request to retrieve all authentication methods currently registered to my account with Safe Recovery Service";
+    try {
+        return generateSIWEMessage(
+          accountAddress,
+          statement,
+          this.chainId,
+          this.siweDomain,
+          this.siweUri
+        );
+    } catch (err) {
+        const error = ensureError(err);
+
+        throw new SafeRecoveryServiceSdkError(
+            "SIWE_ERROR",
+            error.message,
+            {
+                cause: error,
+                context:{
+                    accountAddress,
+                    statement,
+                    chainId: parseInt(this.chainId.toString()),
+                }
+            }
+        );
+    }
+  }
+
+  /**
+   * Retrieves all registered authentication methods for an account.
+   * @param accountAddress - a safe account address.
+   * @param eip1271SiweContractSignature - EIP-1271 contract signature for SIWE.
+   * @returns Array of Registration objects.
+   */
+  async getRegistrations(
+      accountAddress: string, eip1271SiweContractSignature: string
+  ): Promise<Registration[]> {
+    const message = this.getRegistrationsSiweStatementToSign(accountAddress);
+    const fullServiceEndpointUrl = `${this.serviceEndpoint}/v1/auth/registrations`;
+
+    const response = await sendHttpRequest(
+        fullServiceEndpointUrl,
+        {
+            account: accountAddress,
+            chainId: parseInt(this.chainId.toString()),
+            message,
+            signature: eip1271SiweContractSignature
+        },
+        "get"
+    ) as Registration[];
+
+    for(const element in response){
+        if (
+            typeof element !== 'object' || element === null ||
+            ! ("id" in element) || ! (typeof element["id"] === 'string') ||
+            ! ("account" in element) || ! (typeof element["account"] === 'string') ||
+            ! ("chainId" in element) || ! (typeof element["chainId"] === 'number') ||
+            ! ("channel" in element) || ! (typeof element["channel"] === 'string') ||
+            ! ("target" in element) || ! (typeof element["target"] === 'string') ||
+            ! ("guardian" in element) || ! (typeof element["guardian"] === 'string') ||
+            ! ("createdAt" in element) || ! (typeof element["createdAt"] === 'string') ||
+            ! ("updatedAt" in element) || ! (typeof element["updatedAt"] === 'string')
+        ){
+            throw new SafeRecoveryServiceSdkError(
+                "BAD_DATA",
+                `${fullServiceEndpointUrl} failed`,
+                {
+                    context:{
+                        response:JSON.stringify(response),
+                    }
+                }
+            );
+        }
+    }
+
+    return response as Registration[];
+  }
+
+  /**
+   * Generates a SIWE statement for registering an email recovery method.
+   * @param accountAddress - User's account address.
+   * @param email - Email to register.
+   * @returns SIWE message string.
+   */
+   createRegistrationToEmailRecoverySiweStatementToSign(
+    accountAddress: string,
+    email: string,
+  ): string{
+      return this.createRegistrationToRecoverySiweStatementToSign(
+          accountAddress, "email", email
+      ); 
+  } 
+
+  /**
+   * Registers an email recovery method.
+   * @param accountAddress - User's account address.
+   * @param email - Email to register.
+   * @param eip1271SiweContractSignature - EIP-1271 contract signature.
+   * @returns Challenge ID string.
+   */
+   async createRegistrationToEmailRecovery(
+      accountAddress: string,
+      email: string,
+      eip1271SiweContractSignature: string
+  ): Promise<string>{
+    return await this.createRegistrationToRecovery(
+        accountAddress,
+        "email",
+        email,
+        eip1271SiweContractSignature
+    )
+  }
+
+  /**
+   * Generates a SIWE statement for registering an SMS recovery method.
+   * @param accountAddress - User's account address.
+   * @param phoneNumber - Phone number to register.
+   * @returns SIWE message string.
+   */
+   createRegistrationToSmsRecoverySiweStatementToSign(
+    accountAddress: string,
+    phoneNumber: string,
+  ): string{
+      return this.createRegistrationToRecoverySiweStatementToSign(
+          accountAddress, "sms", phoneNumber
+      ); 
+  } 
+
+  /**
+   * Registers an SMS recovery method.
+   * @param accountAddress - User's account address.
+   * @param phoneNumber - Phone number to register.
+   * @param eip1271SiweContractSignature - EIP-1271 contract signature.
+   * @returns Challenge ID string.
+   */
+  async createRegistrationToSmsRecovery(
+      accountAddress: string,
+      phoneNumber: string,
+      eip1271SiweContractSignature: string
+  ): Promise<string>{
+    return await this.createRegistrationToRecovery(
+        accountAddress,
+        "sms",
+        phoneNumber,
+        eip1271SiweContractSignature
+    )
+  }
+
+  /**
+   * Generates a SIWE statement for registering a recovery method.
+   * @param accountAddress - User's account address.
+   * @param channel - Recovery channel ("sms" or "email").
+   * @param channelTarget - Target (email address or phone number).
+   * @returns SIWE message string.
+   */
+  createRegistrationToRecoverySiweStatementToSign(
+    accountAddress: string,
+    channel: "sms" | "email",
+    channelTarget: string,
+  ): string{
+    let statement =
+        "I authorize Safe Recovery Service to sign a recovery request for my account after I authenticate using {{target}} (via {{channel}})";
+    statement = statement.replace(
+          "{{target}}", channelTarget).replace("{{channel}}", channel);
+        return generateSIWEMessage(
+          accountAddress,
+          statement,
+          this.chainId,
+          this.siweDomain,
+          this.siweUri
+        );
+  }
+
+  /**
+   * Registers a recovery method.
+   * @param accountAddress - User's account address.
+   * @param channel - Recovery channel ("sms" or "email").
+   * @param channelTarget - Target (email address or phone number).
+   * @param eip1271SiweContractSignature - EIP-1271 contract signature.
+   * @returns Challenge ID string.
+   */
+  async createRegistrationToRecovery(
+      accountAddress: string,
+      channel: "sms" | "email",
+      channelTarget: string,
+      eip1271SiweContractSignature: string
+  ): Promise<string>{
+    const message = this.createRegistrationToRecoverySiweStatementToSign(
+        accountAddress, channel, channelTarget
+    );
+
+    const fullServiceEndpointUrl = `${this.serviceEndpoint}/v1/auth/register`;
+    const response = await sendHttpRequest(
+        fullServiceEndpointUrl,
+        {
+            account: accountAddress,
+            chainId: parseInt(this.chainId.toString()),
+            channel,
+            target: channelTarget,
+            message,
+            signature: eip1271SiweContractSignature
+        }
+    );
+
+    if (
+        typeof response !== 'object' || response === null ||
+        ! ("challengeId" in response) || ! (typeof response["challengeId"] === 'string')
+    ){
+        throw new SafeRecoveryServiceSdkError(
+            "BAD_DATA",
+            `${fullServiceEndpointUrl} failed`,
+            {
+                cause:ensureError(response),
+                context:{
+                    account: accountAddress,
+                    chainId: parseInt(this.chainId.toString()),
+                    channel,
+                    channelTarget,
+                    message,
+                    eip1271SiweContractSignature
+                }
+            }
+        );
+    }else{
+        return response["challengeId"];
+    }
+  }
+
+
+  /**
+   * Submits the OTP challenge for a registration.
+   * @param challengeId - Challenge ID from registration.
+   * @param otpChallenge - OTP value.
+   * @returns Object containing registrationId and guardianAddress.
+   */
+  async submitRegistrationChallenge(
+      challengeId: string, otpChallenge: string
+  ) :Promise<{registrationId: string, guardianAddress: string}>{
+    const fullServiceEndpointUrl = `${this.serviceEndpoint}/v1/auth/submit`;
+    const response = await sendHttpRequest(
+        fullServiceEndpointUrl,
+        {
+            challengeId,
+            challenge: otpChallenge
+        }
+    );
+
+    if (
+        typeof response !== 'object' ||
+        response === null ||
+        ! ("registrationId" in response) ||
+        ! (typeof response["registrationId"] === 'string') ||
+        ! ("guardianAddress" in response) ||
+        ! (typeof response["guardianAddress"] === 'string')
+    ){
+        throw new SafeRecoveryServiceSdkError(
+            "BAD_DATA",
+            `${fullServiceEndpointUrl} failed`,
+            {
+                cause:ensureError(response),
+                context:{
+                    challengeId,
+                    challenge: otpChallenge
+                }
+            }
+        );
+    }else{
+        return response as {registrationId: string, guardianAddress: string};
+    }
+  }
+
+  /**
+   * Generates a SIWE statement for deleting a registration.
+   * @param accountAddress - Safe's account address.
+   * @param registrationId - Registration ID to remove.
+   * @returns SIWE message string.
+   */
+  deleteRegistrationSiweStatementToSign(
+      accountAddress: string, registrationId: string
+  ): string{
+    let statement =
+        "I request to remove the authentication method with registration ID {{id}} from my account on Safe Recovery Service";
+
+    statement = statement.replace("{{id}}", registrationId);
+        return generateSIWEMessage(
+          accountAddress,
+          statement,
+          this.chainId,
+          this.siweDomain,
+          this.siweUri
+        );
+  }
+
+  /**
+   * Deletes a registration from the service.
+   * @param accountAddress - Safe's account address.
+   * @param registrationId - Registration ID to remove.
+   * @param eip1271SiweContractSignature - EIP-1271 contract signature.
+   * @returns Boolean true if successful.
+   */
+  async deleteRegistration(
+      accountAddress: string,
+      registrationId: string,
+      eip1271SiweContractSignature: string
+  ): Promise<boolean>{
+    const message = this.deleteRegistrationSiweStatementToSign(
+        accountAddress, registrationId
+    );
+
+    const fullServiceEndpointUrl = `${this.serviceEndpoint}/v1/auth/delete`;
+    const response = await sendHttpRequest(
+        fullServiceEndpointUrl,
+        {
+            registrationId,
+            message,
+            signature: eip1271SiweContractSignature
+        }
+    );
+
+    if (
+        typeof response !== 'object' ||
+        response === null ||
+        ! ("success" in response) ||
+        ! (typeof response["success"] === 'boolean')
+    ){
+        throw new SafeRecoveryServiceSdkError(
+            "BAD_DATA",
+            `${fullServiceEndpointUrl} failed`,
+            {
+                cause:ensureError(response),
+                context:{
+                    registrationId,
+                    message,
+                    eip1271SiweContractSignature,
+                }
+            }
+        );
+    }else{
+        return response["success"];
+    }
+  }
+
+  /**
+   * Requests to execute an account recovery.
+   * @param accountAddress - Safe's account address.
+   * @param newOwners - List of new owners for the Safe.
+   * @param newThreshold - New threshold value.
+   * @returns SignatureRequest object.
+   */
+  async requestToExecuteRecovery(
+      accountAddress: string, newOwners: string[], newThreshold: number
+  ) :Promise<SignatureRequest>{
+    const fullServiceEndpointUrl = `${this.serviceEndpoint}/v1/auth/signature/request`;
+    const response = await sendHttpRequest(
+        fullServiceEndpointUrl,
+        {
+            account: accountAddress,
+            newOwners,
+            newThreshold,
+            chainId: parseInt(this.chainId.toString()),
+        }
+    );
+
+    return response as SignatureRequest;
+  }
+
+  /**
+   * Submits a challenge response to execute recovery.
+   * @param requestId - ID of the signature request.
+   * @param challengeId - ID of the OTP challenge.
+   * @param otpChallenge - OTP value.
+   * @returns Object with success flag,
+   * custodianGuardianAddress and custodianGuardianSignature are
+   * retuned if collectedVerifications >= signatureRequest.requiredVerifications
+   */
+  async submitChallengeToExecuteRecovery(
+      requestId: string, challengeId: string, otpChallenge: string
+  ) :Promise<{
+        success: boolean;
+        custodianGuardianAddress?: string;
+        custodianGuardianSignature?: string;
+    }>
+  {
+    const fullServiceEndpointUrl = `${this.serviceEndpoint}/v1/auth/signature/submit`;
+
+    const response = await sendHttpRequest(
+        fullServiceEndpointUrl,
+        {
+            requestId,
+            challengeId,
+            challenge: otpChallenge
+        }
+    );
+    return response as {
+        success: boolean,
+        custodianGuardianAddress?: string,
+        custodianGuardianSignature?: string
+    };
+  }
+}
