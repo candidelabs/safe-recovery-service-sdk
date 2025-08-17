@@ -1,5 +1,5 @@
 import {SocialRecoveryModule} from "abstractionkit";
-import { ethers } from "ethers";
+import {ethers} from "ethers";
 import { SafeRecoveryServiceSdkError, ensureError } from "./errors";
 import { sendHttpRequest, SocialRecoveryModuleGracePeriodSelector } from "./utils";
 
@@ -20,6 +20,51 @@ export type RecoveryByGuardianRequest = {
     updatedAt: string
 }
 
+/**
+ * Service client for interacting with the Safe Recovery backend
+ * using the Social Recovery Module (guardian-based recovery mechanism).
+ *
+ * This class provides high-level methods to:
+ * - Query pending, executed, or finalized recovery requests.
+ * - Create new recovery requests with updated owners and threshold.
+ * - Submit guardian signatures for existing recovery requests.
+ * - Execute or finalize recovery requests once the necessary conditions are met.
+ *
+ * Key Features:
+ * 1. **Status-based Retrieval** – Fetch recovery requests for the latest relevant nonce,
+ *    filtered by status ("PENDING", "EXECUTED", or "FINALIZED").
+ * 2. **Nonce Management** – Automatically adjusts which nonce to use based on the
+ *    recovery status being queried.
+ * 3. **Error Safety** – Wraps unexpected responses and RPC errors in
+ *    `SafeRecoveryServiceSdkError` for consistent error handling.
+ * 4. **Chain-aware** – Supports specifying `chainId` and recovery module address
+ *    for interacting with the correct blockchain network.
+ * 5. **Guardian Operations** – Handles guardian signature submission and
+ *    recovery execution/finalization lifecycle.
+ *
+ * Typical Usage:
+ * ```ts
+ * const recoveryService = new RecoveryByGuardianService(
+ *   "https://api.saferecovery.example",
+ *   1n, // Ethereum mainnet chainId
+ * );
+ *
+ * // Fetch pending requests
+ * const pending = await recoveryService.getPendingRecoveryRequestsForLatestNonce(
+ *   "https://mainnet.infura.io/v3/YOUR_KEY",
+ *   "0xAccountAddress..."
+ * );
+ *
+ * // Create a recovery request
+ * await recoveryService.createRecoveryRequest(
+ *   "0xAccountAddress...",
+ *   ["0xNewOwner1...", "0xNewOwner2..."],
+ *   2,
+ *   "0xGuardianAddress...",
+ *   guardianSignature
+ * );
+ * ```
+ */
 export class RecoveryByGuardianService {
   readonly serviceEndpoint;
   readonly chainId;
@@ -35,6 +80,12 @@ export class RecoveryByGuardianService {
       this.recoveryModuleAddress = recoveryModuleAddress;
   }
 
+  /**
+   * Fetches all recovery requests with status = "PENDING" for the latest recovery nonce of a given account.
+   * @param rpcNode RPC node URL used to fetch recovery nonce.
+   * @param accountAddress Address of the account to recover.
+   * @returns List of pending recovery requests.
+   */
   async getPendingRecoveryRequestsForLatestNonce(
       rpcNode: string,
       accountAddress: string,
@@ -44,6 +95,13 @@ export class RecoveryByGuardianService {
       )
   }
 
+
+  /**
+   * Retrieves the single EXECUTED recovery request for the latest nonce of a given account.
+   * @param rpcNode RPC node URL.
+   * @param accountAddress Address of the account to recover.
+   * @returns The executed recovery request or null if none exists.
+   */
   async getExecutedRecoveryRequestForLatestNonce(
       rpcNode: string,
       accountAddress: string,
@@ -66,6 +124,12 @@ export class RecoveryByGuardianService {
       }
   }
 
+  /**
+   * Retrieves the single FINALIZED recovery request for the latest nonce of a given account.
+   * @param rpcNode RPC node URL.
+   * @param accountAddress Address of the account to recover.
+   * @returns The finalized recovery request or null if none exists.
+   */
   async getFinalizedRecoveryRequestForLatestNonce(
       rpcNode: string,
       accountAddress: string,
@@ -90,6 +154,14 @@ export class RecoveryByGuardianService {
       }
   }
 
+   /**
+   * Fetches all recovery requests for the latest relevant nonce filtered by a given status.
+   * If status is not "PENDING", the nonce is decremented by 1.
+   * @param rpcNode RPC node URL.
+   * @param accountAddress Account to recover.
+   * @param status Status filter ("PENDING" | "EXECUTED" | "FINALIZED").
+   * @returns Filtered list of recovery requests.
+   */
   async getRecoveryRequestsForLatestNonce(
       rpcNode: string,
       accountAddress: string,
@@ -136,6 +208,12 @@ export class RecoveryByGuardianService {
     return recoveryRequests;
   }
 
+   /**
+   * Retrieves all recovery requests for a given account and recovery nonce from the service API.
+   * @param accountAddress Account address.
+   * @param recoveryNonce Recovery nonce.
+   * @returns List of recovery requests.
+   */
   async getRecoveryRequests(
       accountAddress: string,
       recoveryNonce: bigint,
@@ -159,6 +237,15 @@ export class RecoveryByGuardianService {
     return response;
   }
 
+  /**
+   * Creates a new recovery request for an account with updated owners and threshold, signed by a guardian.
+   * @param accountAddress Account being recovered.
+   * @param newOwners New owner addresses.
+   * @param newThreshold New threshold for signatures.
+   * @param guardianAddress Guardian’s address.
+   * @param guardianSignature Guardian’s signature.
+   * @returns The newly created recovery request.
+   */
   async createRecoveryRequest(
       accountAddress: string,
       newOwners: string[],
@@ -182,6 +269,13 @@ export class RecoveryByGuardianService {
     return response;
   }
 
+  /**
+   * Submits a guardian’s signature for an existing recovery request.
+   * @param id Recovery request ID.
+   * @param guardianAddress Guardian’s address.
+   * @param guardianSignature Guardian’s signature.
+   * @returns True if submission was successful, false otherwise.
+   */
   async submitGuardianSignatureForRecoveryRequest(
       id: string, guardianAddress: string, guardianSignature: string
   ): Promise<boolean>{
@@ -214,6 +308,11 @@ export class RecoveryByGuardianService {
     }
   }
 
+  /**
+   * Executes a recovery request.
+   * @param id Recovery request ID.
+   * @returns True if execution was successful, false otherwise.
+   */
   async executeRecoveryRequest(id: string): Promise<boolean>{
     const fullServiceEndpointUrl = `${this.serviceEndpoint}/v1/recoveries/execute`;
     const response = await sendHttpRequest(fullServiceEndpointUrl, {id});
@@ -238,6 +337,11 @@ export class RecoveryByGuardianService {
     }
   }
 
+  /**
+   * Finalizes a recovery request.
+   * @param id Recovery request ID.
+   * @returns True if finalization was successful, false otherwise.
+   */
   async finalizeRecoveryRequest(id: string): Promise<boolean>{
     const fullServiceEndpointUrl = `${this.serviceEndpoint}/v1/recoveries/finalize`;
     const response = await sendHttpRequest(fullServiceEndpointUrl, {id});
