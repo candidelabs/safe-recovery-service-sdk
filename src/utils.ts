@@ -1,8 +1,11 @@
 import {SiweMessage} from "siwe";
 import * as fetchImport from "isomorphic-unfetch";
 import {ethers} from "ethers";
-import { ensureError, SafeRecoveryServiceSdkError } from "./errors";
+import { ensureError, HttpErrorCodeDict, SafeRecoveryServiceSdkError } from "./errors";
 import { RecoveryByGuardianRequest } from "./recoveryByGuardian";
+import { AlertsSubscription } from "./alerts";
+import { Registration, SignatureRequest } from "./recoveryByCustodialGuardian";
+import { JsonRpcError } from "abstractionkit";
 
 export enum SocialRecoveryModuleGracePeriodSelector {
 	After3Minutes = "0x949d01d424bE050D09C16025dd007CB59b3A8c66",
@@ -48,6 +51,11 @@ export function generateSIWEMessage(
 }
 
 export type JsonRpcResult =
+    NetworkConfig |
+    {success: boolean, signer?: string, signature?: string} |
+    SignatureRequest |
+    Registration[] |
+    AlertsSubscription[] |
     RecoveryByGuardianRequest |
     RecoveryByGuardianRequest[];
 
