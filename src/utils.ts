@@ -70,17 +70,30 @@ export async function sendHttpRequest(
         );
     }
 	if ("code" in response) {
-         throw new SafeRecoveryServiceSdkError(
-             "HTTP_ERROR",
-             response.message,
-             {
-                 errno: response.code,
-                 context:{
-                    url: rpcUrl,
-                    requestOptions: JSON.stringify(requestOptions),
-                 }
-             }
-         );
+        const err = response.error as JsonRpcError;
+		const codeString = String(err.code);
+
+		if (codeString in HttpErrorCodeDict) {
+			throw new SafeRecoveryServiceSdkError(
+				HttpErrorCodeDict[codeString],
+				err.message,
+				{
+					errno: err.code,
+					context: {
+						url: rpcUrl,
+						requestOptions: JSON.stringify(requestOptions),
+					},
+				},
+			);
+		} else {
+			throw new SafeRecoveryServiceSdkError("UNKNOWN_ERROR", err.message, {
+				errno: err.code,
+				context: {
+					url: rpcUrl,
+					requestOptions: JSON.stringify(requestOptions),
+				},
+			});
+		}
 	} else {
 		return response;
 	}

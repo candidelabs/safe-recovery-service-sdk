@@ -7,12 +7,37 @@ export interface Dictionary<T> {
 	[Key: string]: T;
 }
 
+export const HttpErrorCodeDict: Dictionary<HttpErrorCode> = {
+	"400": "HTTP_BAD_REQUEST",
+	"401": "HTTP_UNAUTHORIZED",
+	"403": "HTTP_FORBIDDEN",
+	"404": "HTTP_NOT_FOUND",
+	"409": "HTTP_CONFLICT",
+	"429": "HTTP_TOO_MANY_REQUESTS",
+	"500": "HTTP_INTERNAL_ERROR",
+	"502": "HTTP_BAD_GATEWAY",
+	"503": "HTTP_SERVICE_UNAVAILABLE",
+	"504": "HTTP_GATEWAY_TIMEOUT",
+};
+
+export type HttpErrorCode =
+	| "HTTP_BAD_REQUEST"        // 400
+	| "HTTP_UNAUTHORIZED"       // 401
+	| "HTTP_FORBIDDEN"          // 403
+	| "HTTP_NOT_FOUND"          // 404
+	| "HTTP_CONFLICT"           // 409
+	| "HTTP_TOO_MANY_REQUESTS"  // 429
+	| "HTTP_INTERNAL_ERROR"     // 500
+	| "HTTP_BAD_GATEWAY"        // 502
+	| "HTTP_SERVICE_UNAVAILABLE"// 503
+	| "HTTP_GATEWAY_TIMEOUT";   // 504
+
 export type BasicErrorCode =
 	| "UNKNOWN_ERROR"
 	| "TIMEOUT"
 	| "SIWE_ERROR"
-	| "HTTP_ERROR"
-	| "BAD_DATA";
+	| "BAD_DATA"
+    | HttpErrorCode;
 
 export type Jsonable =
 	| string
