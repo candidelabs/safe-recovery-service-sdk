@@ -17,7 +17,7 @@
 	},
 	"repository": {
 		"type": "git",
-		"url": "git+https://github.com/candidelabs/safe-recovery-service-sdk.git"
+		"url": "git+https://github.com/candidelabs/safe-recovery-sdk.git"
 	},
 	"files": [
 		"dist"
