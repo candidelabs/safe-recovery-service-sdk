@@ -8,12 +8,8 @@ import { generateSIWEMessage, sendHttpRequest } from "./utils";
 export type AlertsSubscription = {
     /** Unique subscription ID. */
     id: string;
-    /** one of the safe's owners. */
-    owner: string;
-    /** EVM chain ID where the subscription applies. */
-    chainId: number;
     /** Delivery channel (e.g., "email" or "sms"). */
-    channel: string;
+    channel: "email" | "sms";
     /** Target identifier for the channel (e.g., email address or phone number). */
     target: string;
 };
@@ -22,8 +18,6 @@ export type AlertsSubscription = {
  * Service class for creating, retrieving, activating, and removing alert subscriptions.
  *
  * @remarks
- * - Methods that generate SIWE statements return the raw message string to be signed
- *   (or to be verified by a contract using EIP-1271).
  * - Network calls can throw {@link SafeRecoveryServiceSdkError} with useful `context`.
  *
  * @example
@@ -76,19 +70,19 @@ export class Alerts {
 
   /**
    * Generate a SIWE statement to retrieve all subscriptions for `accountAddress`.
-   * @param accountAddress - The safe's account address.
+   * @param ownerAddress - The safe owner address.
    * @returns SIWE message string to sign by an owner.
    * @example
    * ```ts
    * const msg = alerts.getSubscriptionsSiweStatementToSign("0xabc...");
    * ```
    */
-  getSubscriptionsSiweStatementToSign(accountAddress: string): string{
+  getSubscriptionsSiweStatementToSign(ownerAddress: string): string{
     let statement =
         "I request to retrieve all Social Recovery Module alert subscriptions linked to my account";
     try {
         return generateSIWEMessage(
-          accountAddress,
+          ownerAddress,
           statement,
           this.chainId,
           this.siweDomain,
@@ -103,7 +97,7 @@ export class Alerts {
             {
                 cause: error,
                 context:{
-                    accountAddress,
+                    owner: ownerAddress,
                     statement,
                     chainId: parseInt(this.chainId.toString()),
                 }
@@ -113,9 +107,12 @@ export class Alerts {
   }
 
   /**
-   * Retrieve all alert subscriptions linked to `accountAddress`.
+   * Retrieve all active alert subscriptions linked to `ownerAddress`
+   * with `accountAddress`.
    * @param accountAddress - The safe address whose subscriptions to fetch.
-   * @param eip1271SiweContractSignature - Signature attesting to the SIWE message.
+   * @param ownerAddress - The safe owner address.
+   * @param siweMessage - SIWE message to sign by an owner.
+   * @param siweOwnerSignature - Signature attesting to the SIWE message.
    * @returns Promise resolving to an array of {@link AlertsSubscription}.
    * @example
    * ```ts
@@ -124,33 +121,31 @@ export class Alerts {
    * const subs = await alerts.getSubscriptions(owner, contractSig);
    * ```
    */
-  async getSubscriptions(
-      accountAddress: string, eip1271SiweContractSignature: string
+  async getActiveSubscriptions(
+      accountAddress: string,
+      ownerAddress: string,
+      siweMessage: string,
+      siweOwnerSignature: string 
   ):Promise<AlertsSubscription[]> {
-    const message = this.getSubscriptionsSiweStatementToSign(accountAddress);
-
     const fullServiceEndpointUrl = `${this.serviceEndpoint}/v1/alerts/subscriptions`;
     const response = await sendHttpRequest(
         fullServiceEndpointUrl,
         {
             account: accountAddress,
+            owner: ownerAddress,
             chainId: parseInt(this.chainId.toString()),
-            message,
-            signature: eip1271SiweContractSignature
+            message: siweMessage,
+            signature: siweOwnerSignature
         },
         "get"
-    ) as AlertsSubscription[];
-
-    for(const element of response){
+    ) as {subscriptions:AlertsSubscription[]};
+    const subscriptions = response["subscriptions"] as AlertsSubscription[];
+    for(const element of subscriptions){
         if (
             typeof element !== 'object' ||
             element === null ||
             ! ("id" in element) ||
             ! (typeof element["id"] === 'string') ||
-            ! ("owner" in element) ||
-            ! (typeof element["owner"] === 'string') ||
-            ! ("chainId" in element) ||
-            ! (typeof element["chainId"] === 'number') ||
             ! ("channel" in element) ||
             ! (typeof element["channel"] === 'string') ||
             ! ("target" in element) ||
@@ -171,12 +166,13 @@ export class Alerts {
             );
         }
     }
-    return response as AlertsSubscription[];
+    return subscriptions;
   }
 
  /**
    * Generate a SIWE statement to create an **email** subscription.
    * @param accountAddress - The safe address.
+   * @param ownerAddress - The safe owner address.
    * @param email - Target email address to receive alerts.
    * @returns SIWE message string to sign by an owner.
    * @example
@@ -185,17 +181,20 @@ export class Alerts {
    * ```
    */
   createEmailSubscriptionSiweStatementToSign(
-      accountAddress: string,
-      email: string
+    accountAddress: string, ownerAddress: string, email: string
   ): string{
-      return this.createSubscriptionSiweStatementToSign(accountAddress, "email", email);
+      return this.createSubscriptionSiweStatementToSign(
+          accountAddress, ownerAddress, "email", email
+      );
   }
 
   /**
    * Create a new **email** subscription.
    * @param accountAddress - The safe address.
+   * @param ownerAddress - The safe owner address.
    * @param email - Target email address to receive alerts.
-   * @param eip1271SiweContractSignature - An owner's signature attesting to the SIWE message.
+   * @param siweMessage - SIWE message to sign by an owner.
+   * @param siweOwnerSignature - An owner's signature attesting to the SIWE message.
    * @returns Promise resolving to the new `subscriptionId`.
    * @example
    * ```ts
@@ -204,20 +203,25 @@ export class Alerts {
    */
   async createEmailSubscription(
       accountAddress: string,
+      ownerAddress: string,
       email: string,
-      eip1271SiweContractSignature: string
+      siweMessage: string,
+      siweOwnerSignature: string
   ):Promise<string> {
       return this.createSubscription(
           accountAddress,
+          ownerAddress,
           "email",
           email,
-          eip1271SiweContractSignature
+          siweMessage,
+          siweOwnerSignature
       );
   }
 
   /**
    * Generate a SIWE statement to create a subscription.
    * @param accountAddress - The safe address.
+   * @param ownerAddress - The safe owner address.
    * @param channel - Delivery channel ("sms" | "email").
    * @param channelTarget - Target identifier (phone number for SMS, email address for email).
    * @returns SIWE message string to sign by an owner.
@@ -228,49 +232,57 @@ export class Alerts {
    */
   createSubscriptionSiweStatementToSign(
     accountAddress: string,
+    ownerAddress: string,
     channel: "sms" | "email",
     channelTarget: string,
   ): string{
     let statement =
-        "I agree to receive Social Recovery Module alert notifications for my account address on all supported chains sent to {{target}} (via {{channel}})";
+        "I agree to receive Social Recovery Module alert notifications for {{account}} on all supported chains sent to {{target}} (via {{channel}})";
     statement = statement.replace(
-          "{{target}}", channelTarget).replace("{{channel}}", channel);
-        return generateSIWEMessage(
-          accountAddress,
-          statement,
-          this.chainId,
-          this.siweDomain,
-          this.siweUri
-        );
+        "{{account}}", accountAddress.toLowerCase()
+    ).replace(
+        "{{target}}", channelTarget
+    ).replace(
+        "{{channel}}", channel
+    );
+    return generateSIWEMessage(
+      ownerAddress,
+      statement,
+      this.chainId,
+      this.siweDomain,
+      this.siweUri
+    );
   }
 
   /**
    * Create a new subscription.
    * @param accountAddress - The safe address.
+   * @param ownerAddress - The safe owner address.
    * @param channel - Delivery channel ("sms" | "email").
    * @param channelTarget - Target identifier (phone number for SMS, email address for email).
-   * @param eip1271SiweContractSignature - Signature attesting to the SIWE message.
+   * @param siweMessage - SIWE message to sign by an owner.
+   * @param siweOwnerSignature - Signature attesting to the SIWE message.
    * @returns Promise resolving to the new `subscriptionId`.
    */
   async createSubscription(
       accountAddress: string,
+      ownerAddress: string,
       channel: "sms" | "email",
       channelTarget: string,
-      eip1271SiweContractSignature: string
+      siweMessage: string,
+      siweOwnerSignature: string
   ):Promise<string> {
-    const message = this.createSubscriptionSiweStatementToSign(
-        accountAddress, channel, channelTarget
-    );
     const fullServiceEndpointUrl = `${this.serviceEndpoint}/v1/alerts/subscribe`;
     const response = await sendHttpRequest(
         fullServiceEndpointUrl,
         {
             account: accountAddress,
+            owner: ownerAddress,
             chainId: parseInt(this.chainId.toString()),
             channel,
             target: channelTarget,
-            message,
-            signature: eip1271SiweContractSignature
+            message: siweMessage,
+            signature: siweOwnerSignature
         }
     )
     if (
@@ -285,11 +297,12 @@ export class Alerts {
             {
                 context:{
                     account: accountAddress,
+                    owner: ownerAddress,
                     chainId: parseInt(this.chainId.toString()),
                     channel,
                     target: channelTarget,
-                    message,
-                    signature: eip1271SiweContractSignature,
+                    siweMessage,
+                    signature: siweOwnerSignature,
                     response: JSON.stringify(
                         response,
                         (key, value) =>
@@ -315,7 +328,7 @@ export class Alerts {
     const fullServiceEndpointUrl = `${this.serviceEndpoint}/v1/alerts/activate`;
     const response = await sendHttpRequest(fullServiceEndpointUrl, {
         subscriptionId,
-        otpChallenge
+        challenge: otpChallenge
     });
 
     if (
@@ -342,32 +355,24 @@ export class Alerts {
   /**
    * Unsubscribe (remove) a subscription.
    * @param subscriptionId - The subscription to remove.
-   * @param owner - Optional Owner address (used in the SIWE statement),
-   * if the address that signed the sunscription is no longer an owner, the 
-   * subscription can be removed by anyone and the owner param can be null
-   * @param eip1271SiweContractSignature - Optional Signature attesting to the SIWE message.
-   * if the address that signed the sunscription is no longer an owner, the 
-   * subscription can be removed by anyone and the eip1271SiweContractSignature
-   * param can be null
-   * @returns Promise resolving to `true` when unsubscribe succeeds.
+   * @param ownerAddress - Owner address (used in the SIWE statement),
+   * @param siweMessage - SIWE message to sign by an owner.
+   * @param siweOwnerSignature - Signature attesting to the SIWE message.
+   * @returns Promise resolving to `true` if unsubscribe succeeds.
    */
   async unsubscribe(
       subscriptionId: string,
-      owner?: string,
-      eip1271SiweContractSignature?: string
+      ownerAddress: string,
+      siweMessage: string,
+      siweOwnerSignature: string
   ): Promise<boolean>{
-    let message = null;
-    if(owner != null){
-        message = this.unsubscribeSiweStatementToSign(owner);
-    }
-
     const fullServiceEndpointUrl = `${this.serviceEndpoint}/v1/alerts/unsubscribe`;
     const response = await sendHttpRequest(fullServiceEndpointUrl, {
         subscriptionId,
-        owner,
-        chainId: this.chainId,
-        message,
-        signature: eip1271SiweContractSignature
+        owner: ownerAddress,
+        chainId: parseInt(this.chainId.toString()),
+        message: siweMessage,
+        signature: siweOwnerSignature
     });
 
     if (
@@ -393,18 +398,18 @@ export class Alerts {
 
   /**
    * Generate a SIWE statement to unsubscribe from **all** alert subscriptions for `owner`.
-   * @param owner - The safe owner address.
+   * @param ownerAddress - The safe owner address.
    * @returns SIWE message string to sign.
    * @example
    * ```ts
    * const msg = alerts.unsubscribeSiweStatementToSign("0xabc...");
    * ```
    */
-  unsubscribeSiweStatementToSign(owner: string): string{
+  unsubscribeSiweStatementToSign(ownerAddress: string): string{
     const statement =
         "I request to unsubscribe from all Social Recovery Module alert subscriptions linked to my account";
         return generateSIWEMessage(
-          owner,
+          ownerAddress,
           statement,
           this.chainId,
           this.siweDomain,

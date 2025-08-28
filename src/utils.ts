@@ -55,7 +55,7 @@ export type JsonRpcResult =
     {success: boolean, signer?: string, signature?: string} |
     SignatureRequest |
     Registration[] |
-    AlertsSubscription[] |
+    {subscriptions:AlertsSubscription[]} |
     RecoveryByGuardianRequest |
     RecoveryByGuardianRequest[];
 
