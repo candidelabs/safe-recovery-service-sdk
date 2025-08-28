@@ -114,7 +114,7 @@ export async function sendHttpRequest(
         );
     }
 	if ("code" in response) {
-        const err = response.error as JsonRpcError;
+        const err = response as JsonRpcError;
 		const codeString = String(err.code);
 
 		if (codeString in HttpErrorCodeDict) {
