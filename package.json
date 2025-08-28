@@ -35,7 +35,7 @@
 		"tag": "latest"
 	},
 	"dependencies": {
-		"abstractionkit": "^0.2.28",
+		"abstractionkit": "^0.2.30",
 		"isomorphic-unfetch": "^4.0.2",
 		"siwe": "^3.0.0"
 	},
