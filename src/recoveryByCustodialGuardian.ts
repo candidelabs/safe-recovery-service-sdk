@@ -479,11 +479,16 @@ export class RecoveryByCustodialGuardian {
             challengeId,
             challenge: otpChallenge
         }
-    );
-    return response as {
+    )as {
         success: boolean,
-        custodianGuardianAddress?: string,
-        custodianGuardianSignature?: string
+        signer?: string,
+        signature?: string
+    };
+
+    return {
+        success: response.success,
+        custodianGuardianAddress: response.signer,
+        custodianGuardianSignature: response.signature
     };
   }
 }
