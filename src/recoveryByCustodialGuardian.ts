@@ -1,15 +1,11 @@
-import { generateSIWEMessage, sendHttpRequest } from "./utils";
+import { generateSIWEMessage, getNetworkConfig, sendHttpRequest } from "./utils";
 import { SafeRecoveryServiceSdkError, ensureError } from "./errors";
+import { RecoveryByGuardianRequest, RecoveryByGuardianService } from "./recoveryByGuardian";
 
 export type Registration = {
     id: string;
-    account: string;
-    chainId: number;
     channel: string;
     target: string;
-    guardian: string;
-    createdAt: string;
-    updatedAt: string;
 }
 
 export type SignatureRequest = {
@@ -118,13 +114,15 @@ export class RecoveryByCustodialGuardian {
   /**
    * Retrieves all registered authentication methods for an account.
    * @param accountAddress - a safe account address.
+   * @param siweMessage - SIWE message to sign by an owner.
    * @param eip1271SiweContractSignature - EIP-1271 contract signature for SIWE.
    * @returns Array of Registration objects.
    */
   async getRegistrations(
-      accountAddress: string, eip1271SiweContractSignature: string
+      accountAddress: string,
+      siweMessage: string,
+      eip1271SiweContractSignature: string
   ): Promise<Registration[]> {
-    const message = this.getRegistrationsSiweStatementToSign(accountAddress);
     const fullServiceEndpointUrl = `${this.serviceEndpoint}/v1/auth/registrations`;
 
     const response = await sendHttpRequest(
@@ -132,23 +130,19 @@ export class RecoveryByCustodialGuardian {
         {
             account: accountAddress,
             chainId: parseInt(this.chainId.toString()),
-            message,
+            message: siweMessage,
             signature: eip1271SiweContractSignature
         },
         "get"
-    ) as Registration[];
+    )as {registrations:Registration[]}; 
+    const registrations = response["registrations"] as Registration[];
 
-    for(const element in response){
+    for(const element of registrations){
         if (
             typeof element !== 'object' || element === null ||
             ! ("id" in element) || ! (typeof element["id"] === 'string') ||
-            ! ("account" in element) || ! (typeof element["account"] === 'string') ||
-            ! ("chainId" in element) || ! (typeof element["chainId"] === 'number') ||
             ! ("channel" in element) || ! (typeof element["channel"] === 'string') ||
-            ! ("target" in element) || ! (typeof element["target"] === 'string') ||
-            ! ("guardian" in element) || ! (typeof element["guardian"] === 'string') ||
-            ! ("createdAt" in element) || ! (typeof element["createdAt"] === 'string') ||
-            ! ("updatedAt" in element) || ! (typeof element["updatedAt"] === 'string')
+            ! ("target" in element) || ! (typeof element["target"] === 'string')
         ){
             throw new SafeRecoveryServiceSdkError(
                 "BAD_DATA",
@@ -161,8 +155,7 @@ export class RecoveryByCustodialGuardian {
             );
         }
     }
-
-    return response as Registration[];
+    return registrations;
   }
 
   /**
@@ -190,12 +183,14 @@ export class RecoveryByCustodialGuardian {
    async createRegistrationToEmailRecovery(
       accountAddress: string,
       email: string,
+      siweMessage: string,
       eip1271SiweContractSignature: string
   ): Promise<string>{
     return await this.createRegistrationToRecovery(
         accountAddress,
         "email",
         email,
+        siweMessage,
         eip1271SiweContractSignature
     )
   }
@@ -225,12 +220,14 @@ export class RecoveryByCustodialGuardian {
   async createRegistrationToSmsRecovery(
       accountAddress: string,
       phoneNumber: string,
+      siweMessage: string,
       eip1271SiweContractSignature: string
   ): Promise<string>{
     return await this.createRegistrationToRecovery(
         accountAddress,
         "sms",
         phoneNumber,
+        siweMessage,
         eip1271SiweContractSignature
     )
   }
@@ -265,6 +262,7 @@ export class RecoveryByCustodialGuardian {
    * @param accountAddress - User's account address.
    * @param channel - Recovery channel ("sms" or "email").
    * @param channelTarget - Target (email address or phone number).
+   * @param siweMessage - SIWE message to sign by an owner.
    * @param eip1271SiweContractSignature - EIP-1271 contract signature.
    * @returns Challenge ID string.
    */
@@ -272,12 +270,9 @@ export class RecoveryByCustodialGuardian {
       accountAddress: string,
       channel: "sms" | "email",
       channelTarget: string,
+      siweMessage: string,
       eip1271SiweContractSignature: string
   ): Promise<string>{
-    const message = this.createRegistrationToRecoverySiweStatementToSign(
-        accountAddress, channel, channelTarget
-    );
-
     const fullServiceEndpointUrl = `${this.serviceEndpoint}/v1/auth/register`;
     const response = await sendHttpRequest(
         fullServiceEndpointUrl,
@@ -286,7 +281,7 @@ export class RecoveryByCustodialGuardian {
             chainId: parseInt(this.chainId.toString()),
             channel,
             target: channelTarget,
-            message,
+            message: siweMessage,
             signature: eip1271SiweContractSignature
         }
     );
@@ -305,7 +300,7 @@ export class RecoveryByCustodialGuardian {
                     chainId: parseInt(this.chainId.toString()),
                     channel,
                     channelTarget,
-                    message,
+                    message: siweMessage,
                     eip1271SiweContractSignature
                 }
             }
@@ -382,26 +377,22 @@ export class RecoveryByCustodialGuardian {
 
   /**
    * Deletes a registration from the service.
-   * @param accountAddress - Safe's account address.
    * @param registrationId - Registration ID to remove.
+   * @param siweMessage - SIWE message to sign by an owner.
    * @param eip1271SiweContractSignature - EIP-1271 contract signature.
    * @returns Boolean true if successful.
    */
   async deleteRegistration(
-      accountAddress: string,
       registrationId: string,
+      siweMessage: string,
       eip1271SiweContractSignature: string
   ): Promise<boolean>{
-    const message = this.deleteRegistrationSiweStatementToSign(
-        accountAddress, registrationId
-    );
-
     const fullServiceEndpointUrl = `${this.serviceEndpoint}/v1/auth/delete`;
     const response = await sendHttpRequest(
         fullServiceEndpointUrl,
         {
             registrationId,
-            message,
+            message: siweMessage,
             signature: eip1271SiweContractSignature
         }
     );
@@ -419,7 +410,7 @@ export class RecoveryByCustodialGuardian {
                 cause:ensureError(response),
                 context:{
                     registrationId,
-                    message,
+                    message: siweMessage,
                     eip1271SiweContractSignature,
                 }
             }
@@ -430,13 +421,13 @@ export class RecoveryByCustodialGuardian {
   }
 
   /**
-   * Requests to execute an account recovery.
+   * Requests custodial guardian signature challenge.
    * @param accountAddress - Safe's account address.
    * @param newOwners - List of new owners for the Safe.
    * @param newThreshold - New threshold value.
    * @returns SignatureRequest object.
    */
-  async requestToExecuteRecovery(
+  async requestCustodialGuardianSignatureChallenge(
       accountAddress: string, newOwners: string[], newThreshold: number
   ) :Promise<SignatureRequest>{
     const fullServiceEndpointUrl = `${this.serviceEndpoint}/v1/auth/signature/request`;
@@ -448,13 +439,33 @@ export class RecoveryByCustodialGuardian {
             newThreshold,
             chainId: parseInt(this.chainId.toString()),
         }
-    );
-
-    return response as SignatureRequest;
+    ) as SignatureRequest;
+    if (
+        typeof response !== 'object' || response === null ||
+        ! ("requestId" in response) || ! (typeof response["requestId"] === 'string') ||
+        ! ("requiredVerifications" in response) ||
+        ! (typeof response["requiredVerifications"] === 'number')
+    ){
+        throw new SafeRecoveryServiceSdkError(
+            "BAD_DATA",
+            `${fullServiceEndpointUrl} failed`,
+            {
+                cause:ensureError(response),
+                context:{
+                    account: accountAddress,
+                    newOwners,
+                    newThreshold,
+                    chainId: parseInt(this.chainId.toString()),
+                }
+            }
+        );
+    }else{
+        return response;
+    }
   }
 
   /**
-   * Submits a challenge response to execute recovery.
+   * Submit custodial guardian signature challenge.
    * @param requestId - ID of the signature request.
    * @param challengeId - ID of the OTP challenge.
    * @param otpChallenge - OTP value.
@@ -462,7 +473,7 @@ export class RecoveryByCustodialGuardian {
    * custodianGuardianAddress and custodianGuardianSignature are
    * retuned if collectedVerifications >= signatureRequest.requiredVerifications
    */
-  async submitChallengeToExecuteRecovery(
+  async submitCustodialGuardianSignatureChallenge(
       requestId: string, challengeId: string, otpChallenge: string
   ) :Promise<{
         success: boolean;
@@ -490,5 +501,63 @@ export class RecoveryByCustodialGuardian {
         custodianGuardianAddress: response.signer,
         custodianGuardianSignature: response.signature
     };
+  }
+
+  /**
+   * Creates and executes a recovery request for a Safe account using a guardian.
+   *
+   * This function performs the following steps:
+   * 1. Fetches the network configuration for the given chain.
+   * 2. Initializes the `RecoveryByGuardianService`.
+   * 3. Creates a recovery request with the provided account, owners, threshold, and guardian details.
+   * 4. Executes the recovery request.
+   *
+   * If execution fails, it throws a `SafeRecoveryServiceSdkError`.
+   *
+   * @param accountAddress - The Safe account address to recover.
+   * @param newOwners - An array of new owner addresses for the Safe.
+   * @param newThreshold - The new threshold.
+   * @param custodianGuardianAddress - The address of the custodian guardian authorizing the recovery.
+   * @param custodianGuardianSignature - The signature from the custodian guardian.
+   * @returns RecoveryByGuardianRequest - The created recovery request object.
+   */
+  async createAndExecuteRecoveryRequest(
+      accountAddress: string,
+      newOwners: string[],
+      newThreshold: number,
+      custodianGuardianAddress:string,
+      custodianGuardianSignature:string
+  ) :Promise<RecoveryByGuardianRequest>{
+      const networkConfig = await getNetworkConfig(this.serviceEndpoint, this.chainId);
+      const recoveryByGuardianService = new RecoveryByGuardianService(
+          this.serviceEndpoint,
+          this.chainId,
+          networkConfig.moduleAddress
+      );
+
+      const recoveryRequest = await recoveryByGuardianService.createRecoveryRequest(
+          accountAddress,
+          newOwners,
+          newThreshold,
+          custodianGuardianAddress,
+          custodianGuardianSignature
+      )
+      const success = await recoveryByGuardianService.executeRecoveryRequest(
+          recoveryRequest.id
+      )
+
+      if(!success){
+        throw new SafeRecoveryServiceSdkError(
+            "BAD_DATA",
+            "executeRecoveryRequest failed",
+            {
+                context:{
+                    recoveryRequestId: recoveryRequest.id
+                }
+            }
+        );
+      }
+
+      return recoveryRequest;
   }
 }

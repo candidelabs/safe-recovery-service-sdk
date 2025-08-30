@@ -54,7 +54,7 @@ export type JsonRpcResult =
     NetworkConfig |
     {success: boolean, signer?: string, signature?: string} |
     SignatureRequest |
-    Registration[] |
+    {registrations:Registration[]} |
     {subscriptions:AlertsSubscription[]} |
     RecoveryByGuardianRequest |
     RecoveryByGuardianRequest[];
