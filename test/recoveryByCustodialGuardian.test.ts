@@ -289,6 +289,194 @@ describe('RecoveryByCustodialGuardian', () => {
                 siweMessage,
                 signature
             );
+            expect(registrations[0].id).toBe(registrationId);
+            expect(registrations[0].target).toBe(email);
+            expect(registrations[0].channel).toBe("email");
+        });
+    });
+
+    describe('deleteRegistration', () => { 
+        it('should fail if only one owner signed', async () => {
+            const siweMessage =
+                recoveryByCustodialGuardian.deleteRegistrationSiweStatementToSign(
+                    smartAccount.accountAddress,
+                    registrationId
+                )
+            const safeTypedData = getSafeMessageEip712Data(
+                smartAccount.accountAddress,
+                chainId,
+                siweMessage
+            )
+            const owner1signature = await firstOwnerAccount.signTypedData(
+                {
+                  domain:safeTypedData.domain as TypedDataDomain,
+                  types:safeTypedData.types,
+                  primaryType: SAFE_MESSAGE_PRIMARY_TYPE,
+                  message: safeTypedData.messageValue            
+                }
+            );
+
+            const signature = SafeAccount.buildSignaturesFromSingerSignaturePairs(
+                [
+                    {signer: firstOwnerPublicAddress, signature: owner1signature},
+                ]
+            )
+            expect(recoveryByCustodialGuardian.deleteRegistration(
+                registrationId,
+                siweMessage,
+                signature
+            )).rejects.toThrow("invalid signature");;
+        });
+
+        it('should succeed if correct signature', async () => {
+            const siweMessage =
+                recoveryByCustodialGuardian.deleteRegistrationSiweStatementToSign(
+                    smartAccount.accountAddress,
+                    registrationId
+                )
+            const safeTypedData = getSafeMessageEip712Data(
+                smartAccount.accountAddress,
+                chainId,
+                siweMessage
+            )
+            const owner1signature = await firstOwnerAccount.signTypedData(
+                {
+                  domain:safeTypedData.domain as TypedDataDomain,
+                  types:safeTypedData.types,
+                  primaryType: SAFE_MESSAGE_PRIMARY_TYPE,
+                  message: safeTypedData.messageValue            
+                }
+            );
+
+            const owner2signature = await secondOwnerAccount.signTypedData(
+                {
+                  domain:safeTypedData.domain as TypedDataDomain,
+                  types:safeTypedData.types,
+                  primaryType: SAFE_MESSAGE_PRIMARY_TYPE,
+                  message: safeTypedData.messageValue            
+                }
+            );
+
+            const signature = SafeAccount.buildSignaturesFromSingerSignaturePairs(
+                [
+                    {signer: firstOwnerPublicAddress, signature: owner1signature},
+                    {signer: secondOwnerPublicAddress, signature: owner2signature},
+                ]
+            )
+            expect(recoveryByCustodialGuardian.deleteRegistration(
+                    registrationId,
+                    siweMessage,
+                    signature
+            )).resolves.toBe(true);
+        });
+
+        it('getSubscriptions should return an empty array after deletion', async ()=>{
+            await new Promise(resolve => setTimeout(resolve, 5*1000)); //5 seconds
+
+            const siweMessage =
+                recoveryByCustodialGuardian.getRegistrationsSiweStatementToSign(
+                    smartAccount.accountAddress
+                )
+            const safeTypedData = getSafeMessageEip712Data(
+                smartAccount.accountAddress,
+                chainId,
+                siweMessage
+            )
+            const owner1signature = await firstOwnerAccount.signTypedData(
+                {
+                  domain:safeTypedData.domain as TypedDataDomain,
+                  types:safeTypedData.types,
+                  primaryType: SAFE_MESSAGE_PRIMARY_TYPE,
+                  message: safeTypedData.messageValue            
+                }
+            );
+
+            const owner2signature = await secondOwnerAccount.signTypedData(
+                {
+                  domain:safeTypedData.domain as TypedDataDomain,
+                  types:safeTypedData.types,
+                  primaryType: SAFE_MESSAGE_PRIMARY_TYPE,
+                  message: safeTypedData.messageValue            
+                }
+            );
+
+            const signature = SafeAccount.buildSignaturesFromSingerSignaturePairs(
+                [
+                    {signer: firstOwnerPublicAddress, signature: owner1signature},
+                    {signer: secondOwnerPublicAddress, signature: owner2signature},
+                ]
+            )
+            expect(recoveryByCustodialGuardian.getRegistrations(
+                smartAccount.accountAddress,
+                siweMessage,
+                signature
+            )).resolves.toStrictEqual([]);
+        });
+
+        it('can create a new registration with the same parameters after deletion', async ()=>{
+            const siweMessage =
+                recoveryByCustodialGuardian.createRegistrationToEmailRecoverySiweStatementToSign(
+                    smartAccount.accountAddress,
+                    email
+                )
+            const safeTypedData = getSafeMessageEip712Data(
+                smartAccount.accountAddress,
+                chainId,
+                siweMessage
+            )
+            const owner1signature = await firstOwnerAccount.signTypedData(
+                {
+                  domain:safeTypedData.domain as TypedDataDomain,
+                  types:safeTypedData.types,
+                  primaryType: SAFE_MESSAGE_PRIMARY_TYPE,
+                  message: safeTypedData.messageValue            
+                }
+            );
+
+            const owner2signature = await secondOwnerAccount.signTypedData(
+                {
+                  domain:safeTypedData.domain as TypedDataDomain,
+                  types:safeTypedData.types,
+                  primaryType: SAFE_MESSAGE_PRIMARY_TYPE,
+                  message: safeTypedData.messageValue            
+                }
+            );
+
+            const signature = SafeAccount.buildSignaturesFromSingerSignaturePairs(
+                [
+                    {signer: firstOwnerPublicAddress, signature: owner1signature},
+                    {signer: secondOwnerPublicAddress, signature: owner2signature},
+                ]
+            )
+            registrationChallengeId =
+                await recoveryByCustodialGuardian.createRegistrationToEmailRecovery(
+                    smartAccount.accountAddress,
+                    email,
+                    siweMessage,
+                    signature
+                );
+
+            
+            await new Promise(resolve => setTimeout(resolve, 5*1000)); //5 seconds
+
+            const fetchResponse = await fetch('http://localhost:8025/api/v1/messages')
+            const responseJson = await fetchResponse.json();
+            const emails = responseJson['messages'];
+            const lastEmail = emails[0];
+            const regex = /-?\d{6}/gm;
+            const otpRes = regex.exec(lastEmail['Snippet'] as string)
+            if(otpRes == null){
+               return 
+            }
+            const otp = otpRes[0]
+
+            const registrationResult =
+                await recoveryByCustodialGuardian.submitRegistrationChallenge(
+                    registrationChallengeId, otp
+                );
+            registrationId = registrationResult.registrationId;
+            guardianAddress = registrationResult.guardianAddress;
+
         });
     });
 
