@@ -44,7 +44,7 @@ export type RecoveryByGuardianRequest = {
  *
  * Typical Usage:
  * ```ts
- * const recoveryService = new RecoveryByGuardianService(
+ * const recoveryService = new RecoveryByGuardian(
  *   "https://api.saferecovery.example",
  *   1n, // Ethereum mainnet chainId
  * );
@@ -65,7 +65,7 @@ export type RecoveryByGuardianRequest = {
  * );
  * ```
  */
-export class RecoveryByGuardianService {
+export class RecoveryByGuardian {
   readonly serviceEndpoint;
   readonly chainId;
   readonly recoveryModuleAddress: SocialRecoveryModuleGracePeriodSelector;

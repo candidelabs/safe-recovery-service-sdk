@@ -9,7 +9,7 @@ import {
 } from "abstractionkit";
 import { RecoveryByCustodialGuardian } from "../src/recoveryByCustodialGuardian";
 import { TypedDataDomain } from 'viem';
-import { RecoveryByGuardianService } from '../src/recoveryByGuardian';
+import { RecoveryByGuardian } from '../src/recoveryByGuardian';
 require('dotenv').config()
 
 jest.setTimeout(300000);
@@ -21,7 +21,7 @@ const nodeUrl = process.env.NODE_URL as string
 const paymasterUrl = process.env.PAYMASTER_URL as string;
 const email = process.env.EMAIL as string;
 
-const recoveryByGuardianService = new RecoveryByGuardianService(
+const recoveryByGuardian = new RecoveryByGuardian(
     serviceUrl,
     chainId,
     SocialRecoveryModuleGracePeriodSelector.After3Minutes
@@ -43,7 +43,7 @@ let smartAccount = SafeAccount.initializeNewAccount(
     [firstOwnerPublicAddress, secondOwnerPublicAddress],
     {threshold:2}
 )
-const srm = new SocialRecoveryModule(recoveryByGuardianService.recoveryModuleAddress)
+const srm = new SocialRecoveryModule(recoveryByGuardian.recoveryModuleAddress)
 const recoveryByCustodialGuardian = new RecoveryByCustodialGuardian(
     serviceUrl, chainId)
 
@@ -409,7 +409,7 @@ describe('RecoveryByCustodialGuardian', () => {
             await new Promise(resolve => setTimeout(resolve, 4*60*1000)); //3 minutes
             console.log("stop waiting for recovery grace period");
 
-            expect(await recoveryByGuardianService.finalizeRecoveryRequest(
+            expect(await recoveryByGuardian.finalizeRecoveryRequest(
                 recoveryRequest.id
             )).toBe(true);
 

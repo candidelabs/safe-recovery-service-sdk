@@ -1,6 +1,6 @@
 import { generateSIWEMessage, getNetworkConfig, sendHttpRequest } from "./utils";
 import { SafeRecoveryServiceSdkError, ensureError } from "./errors";
-import { RecoveryByGuardianRequest, RecoveryByGuardianService } from "./recoveryByGuardian";
+import { RecoveryByGuardianRequest, RecoveryByGuardian } from "./recoveryByGuardian";
 
 export type Registration = {
     id: string;
@@ -508,7 +508,7 @@ export class RecoveryByCustodialGuardian {
    *
    * This function performs the following steps:
    * 1. Fetches the network configuration for the given chain.
-   * 2. Initializes the `RecoveryByGuardianService`.
+   * 2. Initializes the `RecoveryByGuardian`.
    * 3. Creates a recovery request with the provided account, owners, threshold, and guardian details.
    * 4. Executes the recovery request.
    *
@@ -529,20 +529,20 @@ export class RecoveryByCustodialGuardian {
       custodianGuardianSignature:string
   ) :Promise<RecoveryByGuardianRequest>{
       const networkConfig = await getNetworkConfig(this.serviceEndpoint, this.chainId);
-      const recoveryByGuardianService = new RecoveryByGuardianService(
+      const recoveryByGuardian = new RecoveryByGuardian(
           this.serviceEndpoint,
           this.chainId,
           networkConfig.moduleAddress
       );
 
-      const recoveryRequest = await recoveryByGuardianService.createRecoveryRequest(
+      const recoveryRequest = await recoveryByGuardian.createRecoveryRequest(
           accountAddress,
           newOwners,
           newThreshold,
           custodianGuardianAddress,
           custodianGuardianSignature
       )
-      const success = await recoveryByGuardianService.executeRecoveryRequest(
+      const success = await recoveryByGuardian.executeRecoveryRequest(
           recoveryRequest.id
       )
 

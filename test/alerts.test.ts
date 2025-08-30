@@ -10,7 +10,7 @@ import {
 } from "abstractionkit";
 import { 
     RecoveryByGuardianRequest,
-    RecoveryByGuardianService 
+    RecoveryByGuardian 
 } from "../src/recoveryByGuardian";
 import { Alerts } from "../src/alerts"
 
@@ -28,7 +28,7 @@ const nodeUrl = process.env.NODE_URL as string
 const paymasterUrl = process.env.PAYMASTER_URL as string;
 const email = process.env.EMAIL as string;
 
-const recoveryByGuardianService = new RecoveryByGuardianService(
+const recoveryByGuardian = new RecoveryByGuardian(
     serviceUrl,
     chainId,
     SocialRecoveryModuleGracePeriodSelector.After3Minutes
@@ -53,7 +53,7 @@ const firstGuardianPublicAddress =  firstGuardianAccount.address;
 let smartAccount = SafeAccountV0_3_0.initializeNewAccount(
     [ownerPublicAddress],
 )
-const srm = new SocialRecoveryModule(recoveryByGuardianService.recoveryModuleAddress)
+const srm = new SocialRecoveryModule(recoveryByGuardian.recoveryModuleAddress)
 
 beforeAll(async() => {
     const transction1 = srm.createEnableModuleMetaTransaction(

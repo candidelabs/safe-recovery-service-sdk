@@ -16,7 +16,7 @@ import {
     SocialRecoveryModule,
     SocialRecoveryModuleGracePeriodSelector,
 } from "abstractionkit";
-import { RecoveryByGuardianService } from "safe-recovery-service-sdk";
+import { RecoveryByGuardian } from "safe-recovery-service-sdk";
 import * as dotenv from 'dotenv';
 
 async function main() {
@@ -110,7 +110,7 @@ async function main() {
 
     // --------- 4. Create Recovery Request ---------
     // Using 3-minute grace period for demo purposes (use longer periods in production)
-    const recoveryService = new RecoveryByGuardianService(
+    const recoveryService = new RecoveryByGuardian(
         serviceUrl,
         chainId,
         SocialRecoveryModuleGracePeriodSelector.After3Minutes

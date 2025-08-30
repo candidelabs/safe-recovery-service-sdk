@@ -7,7 +7,7 @@ import {
     SocialRecoveryModule,
     SocialRecoveryModuleGracePeriodSelector,
 } from "abstractionkit";
-import { RecoveryByGuardianRequest, RecoveryByGuardianService } from "../src/recoveryByGuardian";
+import { RecoveryByGuardianRequest, RecoveryByGuardian } from "../src/recoveryByGuardian";
 import { TypedDataDomain } from 'viem';
 require('dotenv').config()
 
@@ -18,7 +18,7 @@ const serviceUrl =process.env.RECOVERY_SERVICE_URL as string
 const bundlerUrl = process.env.BUNDLER_URL as string
 const nodeUrl = process.env.NODE_URL as string
 const paymasterUrl = process.env.PAYMASTER_URL as string;
-const recoveryByGuardianService = new RecoveryByGuardianService(
+const recoveryByGuardian = new RecoveryByGuardian(
     serviceUrl,
     chainId,
     SocialRecoveryModuleGracePeriodSelector.After3Minutes
@@ -43,7 +43,7 @@ const secondGuardianPublicAddress =  secondGuardianAccount.address;
 let smartAccount = SafeAccountV0_3_0.initializeNewAccount(
     [ownerPublicAddress],
 )
-const srm = new SocialRecoveryModule(recoveryByGuardianService.recoveryModuleAddress)
+const srm = new SocialRecoveryModule(recoveryByGuardian.recoveryModuleAddress)
 
 beforeAll(async() => {
     const transction1 = srm.createEnableModuleMetaTransaction(
@@ -88,11 +88,11 @@ beforeAll(async() => {
     console.log("Useroperation receipt received.")
 });
 
-describe('RecoveryByGuardianService', () => {
+describe('RecoveryByGuardian', () => {
     describe('createRecoveryRequest', () => {
         it('should fail if account is not a safe', async () => {
             
-            await expect(recoveryByGuardianService.createRecoveryRequest(
+            await expect(recoveryByGuardian.createRecoveryRequest(
                 "0x0000000000000000000000000000000000000000",
                 [newOwnerPublicAddress],
                 1,
@@ -102,7 +102,7 @@ describe('RecoveryByGuardianService', () => {
         });
 
         it('should fail if wrong signature', async () => {
-            await expect(recoveryByGuardianService.createRecoveryRequest(
+            await expect(recoveryByGuardian.createRecoveryRequest(
                 smartAccount.accountAddress,
                 [newOwnerPublicAddress],
                 1,
@@ -127,7 +127,7 @@ describe('RecoveryByGuardianService', () => {
                 message: recoveryRequestEip712Data.messageValue
             })
             // should succeed
-            const recoveryRequest = await recoveryByGuardianService.createRecoveryRequest(
+            const recoveryRequest = await recoveryByGuardian.createRecoveryRequest(
                 smartAccount.accountAddress,
                 [newOwnerPublicAddress],
                 1,
@@ -154,7 +154,7 @@ describe('RecoveryByGuardianService', () => {
     describe('getRecoveryRequests', () => {
         it('should return an empty array if account is not a safe', async () => {
             const recoveryRequests =
-                await recoveryByGuardianService.getRecoveryRequests(
+                await recoveryByGuardian.getRecoveryRequests(
                     "0x0000000000000000000000000000000000000000",
                     0n
                 );
@@ -163,7 +163,7 @@ describe('RecoveryByGuardianService', () => {
 
         it('should succedd and return a single recovery request', async () => {
             const recoveryRequests =
-                await recoveryByGuardianService.getRecoveryRequests(
+                await recoveryByGuardian.getRecoveryRequests(
                     smartAccount.accountAddress,
                     0n
                 ); 
@@ -174,7 +174,7 @@ describe('RecoveryByGuardianService', () => {
     describe('executeRecoveryRequest', () => {
        it('should fail if less than threshold signatures submitted', async () => {
             let pendingRecoveryRequests =
-                await recoveryByGuardianService.getPendingRecoveryRequestsForLatestNonce(
+                await recoveryByGuardian.getPendingRecoveryRequestsForLatestNonce(
                     nodeUrl,
                     smartAccount.accountAddress,
                 );
@@ -182,20 +182,20 @@ describe('RecoveryByGuardianService', () => {
             const recoveryId = pendingRecoveryRequests[0].id;
 
             await expect(
-                recoveryByGuardianService.executeRecoveryRequest(recoveryId)
+                recoveryByGuardian.executeRecoveryRequest(recoveryId)
             ).rejects.toThrow('This recovery request has insufficient signatures');
         });
 
         it('should succeed to execute recovery with suffeciant signatures', async () => {
             let executedRecoveryRequest = 
-                await recoveryByGuardianService.getExecutedRecoveryRequestForLatestNonce(
+                await recoveryByGuardian.getExecutedRecoveryRequestForLatestNonce(
                     nodeUrl,
                     smartAccount.accountAddress,
                 )
             expect(executedRecoveryRequest).toBe(null);
 
             let pendingRecoveryRequests =
-                await recoveryByGuardianService.getPendingRecoveryRequestsForLatestNonce(
+                await recoveryByGuardian.getPendingRecoveryRequestsForLatestNonce(
                     nodeUrl,
                     smartAccount.accountAddress,
                 );
@@ -217,11 +217,11 @@ describe('RecoveryByGuardianService', () => {
             })
 
             //only needed if multiple signatures are needed
-            expect(await recoveryByGuardianService.submitGuardianSignatureForRecoveryRequest(
+            expect(await recoveryByGuardian.submitGuardianSignatureForRecoveryRequest(
                 recoveryId, secondGuardianPublicAddress, secondGuardianSignature
             )).toBe(true);
 
-            expect(await recoveryByGuardianService.executeRecoveryRequest(
+            expect(await recoveryByGuardian.executeRecoveryRequest(
                 recoveryId
             )).toBe(true);
 
@@ -230,7 +230,7 @@ describe('RecoveryByGuardianService', () => {
             console.log("stop waiting for executing the recovery");
 
             executedRecoveryRequest = 
-                await recoveryByGuardianService.getExecutedRecoveryRequestForLatestNonce(
+                await recoveryByGuardian.getExecutedRecoveryRequestForLatestNonce(
                     nodeUrl,
                     smartAccount.accountAddress,
                 ) as RecoveryByGuardianRequest;
@@ -238,7 +238,7 @@ describe('RecoveryByGuardianService', () => {
             expect(executedRecoveryRequest.status).toBe("EXECUTED");
 
             pendingRecoveryRequests =
-                await recoveryByGuardianService.getPendingRecoveryRequestsForLatestNonce(
+                await recoveryByGuardian.getPendingRecoveryRequestsForLatestNonce(
                     nodeUrl,
                     smartAccount.accountAddress,
                 );
@@ -250,7 +250,7 @@ describe('RecoveryByGuardianService', () => {
     describe('finalizeRecoveryRequest', () => {
        it('should fail if before grace period', async () => {
             const executedRecoveryRequest = 
-                await recoveryByGuardianService.getExecutedRecoveryRequestForLatestNonce(
+                await recoveryByGuardian.getExecutedRecoveryRequestForLatestNonce(
                     nodeUrl,
                     smartAccount.accountAddress,
                 ) as RecoveryByGuardianRequest;
@@ -258,7 +258,7 @@ describe('RecoveryByGuardianService', () => {
             const recoveryId = executedRecoveryRequest.id;
 
             await expect(
-                recoveryByGuardianService.finalizeRecoveryRequest(recoveryId)
+                recoveryByGuardian.finalizeRecoveryRequest(recoveryId)
             ).rejects.toThrow('Recovery request is not yet ready for finalization');
         });
 
@@ -268,13 +268,13 @@ describe('RecoveryByGuardianService', () => {
             console.log("stop waiting for recovery grace period");
 
             let executedRecoveryRequest = 
-                await recoveryByGuardianService.getExecutedRecoveryRequestForLatestNonce(
+                await recoveryByGuardian.getExecutedRecoveryRequestForLatestNonce(
                     nodeUrl,
                     smartAccount.accountAddress,
                 ) as RecoveryByGuardianRequest;
 
             const recoveryId = executedRecoveryRequest.id;
-            expect(await recoveryByGuardianService.finalizeRecoveryRequest(
+            expect(await recoveryByGuardian.finalizeRecoveryRequest(
                 recoveryId
             )).toBe(true);
 
@@ -284,14 +284,14 @@ describe('RecoveryByGuardianService', () => {
             
 
             executedRecoveryRequest = 
-                await recoveryByGuardianService.getExecutedRecoveryRequestForLatestNonce(
+                await recoveryByGuardian.getExecutedRecoveryRequestForLatestNonce(
                     nodeUrl,
                     smartAccount.accountAddress,
                 ) as RecoveryByGuardianRequest;
             expect(executedRecoveryRequest).toBe(null);
 
             const finalizedRecoveryRequest = 
-                await recoveryByGuardianService.getFinalizedRecoveryRequestForLatestNonce(
+                await recoveryByGuardian.getFinalizedRecoveryRequestForLatestNonce(
                     nodeUrl,
                     smartAccount.accountAddress,
                 ) as RecoveryByGuardianRequest;
