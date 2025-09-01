@@ -31,6 +31,19 @@ Complete guardian-based recovery workflow demonstrating:
 yarn dev:recovery-flow
 ```
 
+### 02-alerts-subscription
+
+Email and SMS alert subscription setup demonstrating:
+- Safe account creation with Social Recovery Module
+- Email and SMS alert subscriptions with SIWE (Sign in with Ethereum)
+- OTP activation
+- Active subscription verification
+
+**Run:**
+```bash
+yarn dev:alerts-subscription
+```
+
 ## Requirements
 
 - Node.js 16+
