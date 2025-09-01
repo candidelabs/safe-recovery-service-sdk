@@ -7,10 +7,6 @@ This example demonstrates the complete Safe Recovery Service workflow using guar
 ```bash
 # From examples directory
 yarn dev:recovery-flow
-
-# Or build and run
-yarn build
-yarn start:recovery-flow
 ```
 
 ## Configuration
