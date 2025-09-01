@@ -192,6 +192,14 @@ abstractionkit@^0.2.28:
     ethers "^6.13.2"
     isomorphic-unfetch "^3.1.0"
 
+abstractionkit@^0.2.30:
+  version "0.2.30"
+  resolved "https://registry.yarnpkg.com/abstractionkit/-/abstractionkit-0.2.30.tgz#fceed0e5d82af944233a5c3e53bddeac1ca13396"
+  integrity sha512-TSitgkJa1KS9+Chdn5pnhxUIFyTvhsp5xVdw0kjFhIKSm3i/XjlDVeyzv6kAQSht3akthG3gVOAnUkOzXyFQlA==
+  dependencies:
+    ethers "^6.13.2"
+    isomorphic-unfetch "^3.1.0"
+
 acorn-walk@^8.1.1:
   version "8.3.4"
   resolved "https://registry.yarnpkg.com/acorn-walk/-/acorn-walk-8.3.4.tgz#794dd169c3977edf4ba4ea47583587c5866236b7"
@@ -484,12 +492,12 @@ rimraf@^5.0.10:
   dependencies:
     glob "^10.3.7"
 
-safe-recovery-service-sdk@^0.0.1:
-  version "0.0.1"
-  resolved "https://registry.yarnpkg.com/safe-recovery-service-sdk/-/safe-recovery-service-sdk-0.0.1.tgz#04d09a76baed954d3eb5241d436adc2253f31ce8"
-  integrity sha512-6BHwbU+2UhYBPIRASXwmO8ln8Q8Xdci6FxDNK67e/eHXPYvPZRAFG6k1VAR900JatOoipVQkmkzsmmdsjikdoQ==
+safe-recovery-service-sdk@0.0.2:
+  version "0.0.2"
+  resolved "https://registry.yarnpkg.com/safe-recovery-service-sdk/-/safe-recovery-service-sdk-0.0.2.tgz#e52c3327eaf9f615d661b7351d52597355b9757d"
+  integrity sha512-DR4cAWbFApKyuUSktryIPYQXmBZpepb4Cg4RXK62ABVuPSCHHkRcTd+Lpey+b7wND8BWq3Z6uygXp4Ga9g681A==
   dependencies:
-    abstractionkit "^0.2.28"
+    abstractionkit "^0.2.30"
     isomorphic-unfetch "^4.0.2"
     siwe "^3.0.0"
 
