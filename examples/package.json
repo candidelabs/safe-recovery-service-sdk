@@ -9,10 +9,12 @@
     "start:recovery-flow": "node dist/01-recovery-flow/index.js",
     "dev:alerts-subscription": "ts-node 02-alerts-subscription/index.ts",
     "start:alerts-subscription": "node dist/02-alerts-subscription/index.js",
+    "dev:candide-guardian-recovery": "ts-node 03-candide-guardian-recovery/index.ts",
+    "start:candide-guardian-recovery": "node dist/03-candide-guardian-recovery/index.js",
     "clean": "rimraf dist"
   },
   "dependencies": {
-    "abstractionkit": "^0.2.28",
+    "abstractionkit": "^0.2.30",
     "dotenv": "^16.4.5",
     "safe-recovery-service-sdk": "0.0.2",
     "viem": "^2.33.2"

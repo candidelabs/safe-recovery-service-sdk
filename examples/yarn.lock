@@ -184,14 +184,6 @@ abitype@1.0.8, abitype@^1.0.8:
   resolved "https://registry.yarnpkg.com/abitype/-/abitype-1.0.8.tgz#3554f28b2e9d6e9f35eb59878193eabd1b9f46ba"
   integrity sha512-ZeiI6h3GnW06uYDLx0etQtX/p8E24UaHHBj57RSjK7YBFe7iuVn07EDpOeP451D06sF27VOz9JJPlIKJmXgkEg==
 
-abstractionkit@^0.2.28:
-  version "0.2.28"
-  resolved "https://registry.yarnpkg.com/abstractionkit/-/abstractionkit-0.2.28.tgz#1110d50611d8b0171ec18c6b4ab8cf3f1ec60272"
-  integrity sha512-GBoNuZXcIuc/KKeAgsH3NBQmrfGEbazT/xhlp/cPIq3BO4/EDnjgU+Ja1TFlrh4jeQVFUr99wm705lLxCbaapQ==
-  dependencies:
-    ethers "^6.13.2"
-    isomorphic-unfetch "^3.1.0"
-
 abstractionkit@^0.2.30:
   version "0.2.30"
   resolved "https://registry.yarnpkg.com/abstractionkit/-/abstractionkit-0.2.30.tgz#fceed0e5d82af944233a5c3e53bddeac1ca13396"
