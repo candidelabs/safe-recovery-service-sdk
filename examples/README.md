@@ -1,55 +1,75 @@
 # Safe Recovery Service SDK Examples
 
-This directory contains example code demonstrating how to use the Safe Recovery Service SDK.
+Run the three examples **in order** — each builds on the previous one.
 
 ## Setup
 
-1. **Install dependencies:**
-   ```bash
-   cd examples
-   yarn install
-   ```
-
-2. **Configure environment:**
-   ```bash
-   cp .env.example .env
-   ```
+```bash
+cd examples
+yarn install
+cp .env.example .env
+# Edit .env — see notes below
+```
 
 ## Examples
 
-### 01-recovery-flow
+### 01 — Enable Email/SMS Recovery
 
-Complete guardian-based recovery workflow demonstrating:
-- Safe account creation with Social Recovery Module
-- Guardian setup with threshold requirements
-- Recovery request creation with emoji authentication
-- Off-chain signature collection
-- Service-managed execution and finalization
+Deploys a Safe account with the Social Recovery Module, registers your email and/or SMS
+channels with the Candide Guardian Service, and adds the Candide Guardian on-chain.
 
-**Run:**
+**Run once** — prints the Safe address you'll need for Examples 02 and 03.
+
+**Requires in `.env`:** `CHAIN_ID`, `RECOVERY_SERVICE_URL`, `BUNDLER_URL`, `NODE_URL`,
+`PAYMASTER_URL`, `SPONSORSHIP_POLICY_ID`, `OWNER_PRIVATE_KEY`, `USER_EMAIL` (and `USER_PHONE`
+if you want SMS)
+
+```bash
+yarn dev:enable-email-sms-recovery
+```
+
+After running: copy `SAFE_ACCOUNT_ADDRESS` from the output into your `.env`.
+
+---
+
+### 02 — Alerts Setup
+
+Subscribes your email and SMS to recovery event notifications for the Safe deployed in
+Example 01. Uses SIWE for off-chain authentication — no transaction needed.
+
+**Requires in `.env`:** `CHAIN_ID`, `RECOVERY_SERVICE_URL`, `SAFE_ACCOUNT_ADDRESS`,
+`OWNER_PRIVATE_KEY`, `USER_EMAIL`, `USER_PHONE`
+
+```bash
+yarn dev:alerts-setup
+```
+
+---
+
+### 03 — Recovery Flow
+
+Triggers a recovery via the Candide Guardian Service (OTP verification), waits the grace
+period, finalizes the recovery, and verifies the new owner on-chain.
+
+**Requires in `.env`:** `CHAIN_ID`, `RECOVERY_SERVICE_URL`, `NODE_URL`,
+`SAFE_ACCOUNT_ADDRESS`, `USER_EMAIL`
+
 ```bash
 yarn dev:recovery-flow
 ```
 
-### 02-alerts-subscription
+---
 
-Email and SMS alert subscription setup demonstrating:
-- Safe account creation with Social Recovery Module
-- Email and SMS alert subscriptions with SIWE (Sign in with Ethereum)
-- OTP activation
-- Active subscription verification
+## Key `.env` Values
 
-**Run:**
-```bash
-yarn dev:alerts-subscription
-```
+| Variable | Notes |
+|---|---|
+| `OWNER_PRIVATE_KEY` | Generate once: `node -e "console.log(require('viem/accounts').generatePrivateKey())"` — reused across all examples |
+| `SAFE_ACCOUNT_ADDRESS` | Fill in after running Example 01 |
+| `BUNDLER_URL` / `PAYMASTER_URL` | Required only by Example 01 (deploys the Safe) |
 
 ## Requirements
 
-- Node.js 16+
+- Node.js 18+
 - Valid RPC endpoints for your target network
-- Recovery service URL
-
-## Network Support
-
-Examples are configured for Base Sepolia testnet by default. Update the `CHAIN_ID` and URLs in `.env` for other networks.
+- Candide Recovery Service URL

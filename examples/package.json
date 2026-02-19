@@ -5,12 +5,12 @@
   "private": true,
   "scripts": {
     "build": "tsc",
-    "dev:recovery-flow": "ts-node 01-recovery-flow/index.ts",
-    "start:recovery-flow": "node dist/01-recovery-flow/index.js",
-    "dev:alerts-subscription": "ts-node 02-alerts-subscription/index.ts",
-    "start:alerts-subscription": "node dist/02-alerts-subscription/index.js",
-    "dev:candide-guardian-recovery": "ts-node 03-candide-guardian-recovery/index.ts",
-    "start:candide-guardian-recovery": "node dist/03-candide-guardian-recovery/index.js",
+    "dev:enable-email-sms-recovery": "ts-node 01-enable-email-sms-recovery/index.ts",
+    "start:enable-email-sms-recovery": "node dist/01-enable-email-sms-recovery/index.js",
+    "dev:alerts-setup": "ts-node 02-alerts-setup/index.ts",
+    "start:alerts-setup": "node dist/02-alerts-setup/index.js",
+    "dev:recovery-flow": "ts-node 03-recovery-flow/index.ts",
+    "start:recovery-flow": "node dist/03-recovery-flow/index.js",
     "clean": "rimraf dist"
   },
   "dependencies": {
