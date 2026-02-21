@@ -16,7 +16,7 @@
   "dependencies": {
     "abstractionkit": "^0.2.30",
     "dotenv": "^16.4.5",
-    "safe-recovery-service-sdk": "0.0.2",
+    "safe-recovery-service-sdk": "0.0.4",
     "viem": "^2.33.2"
   },
   "devDependencies": {
