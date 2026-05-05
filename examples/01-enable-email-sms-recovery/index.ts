@@ -78,26 +78,38 @@ async function main() {
     // Deploy Safe with the Social Recovery Module enabled
     // Using the 3-minute grace period module for testing; change to After3Days / After7Days / After14Days for production
     const srm = new SocialRecoveryModule(SocialRecoveryModuleGracePeriodSelector.After3Minutes);
-    const enableModuleTx = srm.createEnableModuleMetaTransaction(smartAccount.accountAddress);
     const paymaster = new CandidePaymaster(paymasterUrl);
 
-    let userOperation = await smartAccount.createUserOperation([enableModuleTx], nodeUrl, bundlerUrl);
-    const [paymasterUserOperation, _sponsorMetadata] = await paymaster.createSponsorPaymasterUserOperation(
-        userOperation, bundlerUrl, sponsorshipPolicyId
-    );
-    userOperation = paymasterUserOperation;
-    userOperation.signature = smartAccount.signUserOperation(userOperation, [ownerPrivateKey], chainId);
+    // Skip the enableModule meta-transaction if the Safe is already deployed and the module is already enabled
+    // (e.g. when re-running this example with a persisted OWNER_PRIVATE_KEY)
+    const safeIsDeployed = await SafeAccountV0_3_0.isDeployed(smartAccount.accountAddress, nodeUrl);
+    const moduleAlreadyEnabled = safeIsDeployed
+        ? await smartAccount.isModuleEnabled(nodeUrl, srm.moduleAddress)
+        : false;
 
-    console.log("Deploying Safe...");
-    const deployResponse = await smartAccount.sendUserOperation(userOperation, bundlerUrl);
-    const deployResult = await deployResponse.included();
+    if (moduleAlreadyEnabled) {
+        console.log(`Social Recovery Module already enabled (${srm.moduleAddress}) — skipping deploy step\n`);
+    } else {
+        const enableModuleTx = srm.createEnableModuleMetaTransaction(smartAccount.accountAddress);
 
-    if (!deployResult.success) {
-        console.log("Safe deployment failed");
-        rl.close();
-        return;
+        let userOperation = await smartAccount.createUserOperation([enableModuleTx], nodeUrl, bundlerUrl);
+        const sponsoredDeploy = await paymaster.createSponsorPaymasterUserOperation(
+            smartAccount, userOperation, bundlerUrl, sponsorshipPolicyId
+        );
+        userOperation = sponsoredDeploy.userOperation;
+        userOperation.signature = smartAccount.signUserOperation(userOperation, [ownerPrivateKey], chainId);
+
+        console.log(safeIsDeployed ? "Enabling Social Recovery Module..." : "Deploying Safe...");
+        const deployResponse = await smartAccount.sendUserOperation(userOperation, bundlerUrl);
+        const deployResult = await deployResponse.included();
+
+        if (!deployResult || !deployResult.success) {
+            console.log("Safe deployment / module enablement failed");
+            rl.close();
+            return;
+        }
+        console.log(`Done. tx: ${deployResult.receipt.transactionHash}\n`);
     }
-    console.log(`Safe deployed. tx: ${deployResult.receipt.transactionHash}\n`);
 
     const custodialGuardianService = new RecoveryByCustodialGuardian(serviceUrl, chainId);
 
@@ -233,19 +245,19 @@ async function main() {
         1n // threshold 1 — only Candide Guardian is required to authorise recovery
     );
 
-    userOperation = await smartAccount.createUserOperation([addGuardianTx], nodeUrl, bundlerUrl);
+    let addGuardianUserOp = await smartAccount.createUserOperation([addGuardianTx], nodeUrl, bundlerUrl);
 
-    const [paymasterUserOperation2, _sponsorMetadata2] = await paymaster.createSponsorPaymasterUserOperation(
-        userOperation, bundlerUrl, sponsorshipPolicyId
+    const sponsoredAddGuardian = await paymaster.createSponsorPaymasterUserOperation(
+        smartAccount, addGuardianUserOp, bundlerUrl, sponsorshipPolicyId
     );
-    userOperation = paymasterUserOperation2;
-    userOperation.signature = smartAccount.signUserOperation(userOperation, [ownerPrivateKey], chainId);
+    addGuardianUserOp = sponsoredAddGuardian.userOperation;
+    addGuardianUserOp.signature = smartAccount.signUserOperation(addGuardianUserOp, [ownerPrivateKey], chainId);
 
     console.log("\nAdding Candide Guardian on-chain...");
-    const addGuardianResponse = await smartAccount.sendUserOperation(userOperation, bundlerUrl);
+    const addGuardianResponse = await smartAccount.sendUserOperation(addGuardianUserOp, bundlerUrl);
     const addGuardianResult = await addGuardianResponse.included();
 
-    if (!addGuardianResult.success) {
+    if (!addGuardianResult || !addGuardianResult.success) {
         console.log("Failed to add Candide Guardian");
         rl.close();
         return;

@@ -15,7 +15,6 @@ import {
 import { Alerts } from "../src/alerts"
 
 import { hashMessage, TypedDataDomain } from 'viem';
-import { SafeAccount } from 'abstractionkit/dist/account/Safe/SafeAccount';
 
 require('dotenv').config()
 
@@ -73,8 +72,8 @@ beforeAll(async() => {
 
     const paymaster = new CandidePaymaster(paymasterUrl)
 
-    let [paymasterUserOperation, _sponsorMetadata] = await paymaster.createSponsorPaymasterUserOperation(
-        userOperation, bundlerUrl)
+    let { userOperation: paymasterUserOperation } = await paymaster.createSponsorPaymasterUserOperation(
+        smartAccount, userOperation, bundlerUrl)
     userOperation = paymasterUserOperation;
 
     userOperation.signature = smartAccount.signUserOperation(
