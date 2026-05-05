@@ -60,8 +60,8 @@ beforeAll(async() => {
 
     const paymaster = new CandidePaymaster(paymasterUrl)
 
-    let [paymasterUserOperation, _sponsorMetadata] = await paymaster.createSponsorPaymasterUserOperation(
-        userOperation, bundlerUrl)
+    let { userOperation: paymasterUserOperation } = await paymaster.createSponsorPaymasterUserOperation(
+        smartAccount, userOperation, bundlerUrl)
     userOperation = paymasterUserOperation;
 
     userOperation.signature = smartAccount.signUserOperation(
@@ -75,7 +75,10 @@ beforeAll(async() => {
     )
 
     console.log("Useroperation sent. Waiting to be included ......")
-    let userOperationReceiptResult = await sendUserOperationResponse.included()
+    const userOperationReceiptResult = await sendUserOperationResponse.included()
+    if (!userOperationReceiptResult || !userOperationReceiptResult.success) {
+        throw new Error("Setup UserOperation was not included on-chain")
+    }
 
     console.log("Useroperation receipt received.")
 });
@@ -506,8 +509,8 @@ describe('RecoveryByCustodialGuardian', () => {
 
             const paymaster = new CandidePaymaster(paymasterUrl)
 
-            let [paymasterUserOperation, _sponsorMetadata] = await paymaster.createSponsorPaymasterUserOperation(
-                userOperation, bundlerUrl)
+            let { userOperation: paymasterUserOperation } = await paymaster.createSponsorPaymasterUserOperation(
+                smartAccount, userOperation, bundlerUrl)
             userOperation = paymasterUserOperation;
 
             userOperation.signature = smartAccount.signUserOperation(
@@ -521,7 +524,10 @@ describe('RecoveryByCustodialGuardian', () => {
             )
 
             console.log("Useroperation sent. Waiting to be included ......")
-            let userOperationReceiptResult = await sendUserOperationResponse.included()
+            const userOperationReceiptResult = await sendUserOperationResponse.included()
+            if (!userOperationReceiptResult || !userOperationReceiptResult.success) {
+                throw new Error("Setup UserOperation was not included on-chain")
+            }
 
             console.log("Useroperation receipt received.")
 

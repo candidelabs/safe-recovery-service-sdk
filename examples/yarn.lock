@@ -192,6 +192,13 @@ abstractionkit@^0.2.30:
     ethers "^6.13.2"
     isomorphic-unfetch "^3.1.0"
 
+abstractionkit@^0.3.5:
+  version "0.3.5"
+  resolved "https://registry.yarnpkg.com/abstractionkit/-/abstractionkit-0.3.5.tgz#60b50782ad55e99537e5227e21a80e71dc27ab06"
+  integrity sha512-Hjk8uYIxJx3/AsMn1BwEVXC4WBbVWen/tzVmAtfrWD2OGaJ5wDKV/X1Pgd5I4wGdRjyYjSBL9FBPOYeH2F38Iw==
+  dependencies:
+    ethers "^6.13.2"
+
 acorn-walk@^8.1.1:
   version "8.3.4"
   resolved "https://registry.npmjs.org/acorn-walk/-/acorn-walk-8.3.4.tgz"
