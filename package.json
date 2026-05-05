@@ -36,7 +36,6 @@
 	},
 	"dependencies": {
 		"abstractionkit": "^0.3.5",
-		"isomorphic-unfetch": "^4.0.2",
 		"siwe": "^3.0.0"
 	},
 	"devDependencies": {

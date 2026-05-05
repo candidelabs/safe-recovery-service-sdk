@@ -1,5 +1,4 @@
 import {SiweMessage} from "siwe";
-import * as fetchImport from "isomorphic-unfetch";
 import {ethers} from "ethers";
 import { ensureError, HttpErrorCodeDict, SafeRecoveryServiceSdkError } from "./errors";
 import { RecoveryByGuardianRequest } from "./recoveryByGuardian";
@@ -67,7 +66,6 @@ export async function sendHttpRequest(
     method: "post" | "get" = "post",
     headers: Record<string, string> = { "Content-Type": "application/json" },
 ): Promise<JsonRpcResult> {
-	const fetch = fetchImport.default || fetchImport;
     let response;
     let requestOptions: RequestInit;
     let params;
