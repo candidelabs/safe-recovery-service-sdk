@@ -1,4 +1,5 @@
 import {SiweMessage, generateNonce} from "siwe";
+import {getAddress} from "ethers";
 import { ensureError, HttpErrorCodeDict, SafeRecoveryServiceSdkError } from "./errors";
 import { RecoveryByGuardianRequest } from "./recoveryByGuardian";
 import { AlertsSubscription } from "./alerts";
@@ -22,7 +23,7 @@ export function generateSIWEMessage(
         const issuedAt = new Date().toISOString();
         const siweMessage = new SiweMessage({
           version: "1",
-          address: accountAddress,
+          address: getAddress(accountAddress),
           domain: siweDomain,
           uri: siweUri,
           statement,
