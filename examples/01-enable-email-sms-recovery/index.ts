@@ -240,29 +240,37 @@ async function main() {
         return;
     }
 
-    const addGuardianTx = srm.createAddGuardianWithThresholdMetaTransaction(
-        candideGuardianAddress,
-        1n // threshold 1 — only Candide Guardian is required to authorise recovery
+    const guardianAlreadyAdded = await srm.isGuardian(
+        nodeUrl, smartAccount.accountAddress, candideGuardianAddress
     );
 
-    let addGuardianUserOp = await smartAccount.createUserOperation([addGuardianTx], nodeUrl, bundlerUrl);
+    if (guardianAlreadyAdded) {
+        console.log(`\nCandide Guardian (${candideGuardianAddress}) already added on-chain — skipping`);
+    } else {
+        const addGuardianTx = srm.createAddGuardianWithThresholdMetaTransaction(
+            candideGuardianAddress,
+            1n // threshold 1 — only Candide Guardian is required to authorise recovery
+        );
 
-    const sponsoredAddGuardian = await paymaster.createSponsorPaymasterUserOperation(
-        smartAccount, addGuardianUserOp, bundlerUrl, sponsorshipPolicyId
-    );
-    addGuardianUserOp = sponsoredAddGuardian.userOperation;
-    addGuardianUserOp.signature = smartAccount.signUserOperation(addGuardianUserOp, [ownerPrivateKey], chainId);
+        let addGuardianUserOp = await smartAccount.createUserOperation([addGuardianTx], nodeUrl, bundlerUrl);
 
-    console.log("\nAdding Candide Guardian on-chain...");
-    const addGuardianResponse = await smartAccount.sendUserOperation(addGuardianUserOp, bundlerUrl);
-    const addGuardianResult = await addGuardianResponse.included();
+        const sponsoredAddGuardian = await paymaster.createSponsorPaymasterUserOperation(
+            smartAccount, addGuardianUserOp, bundlerUrl, sponsorshipPolicyId
+        );
+        addGuardianUserOp = sponsoredAddGuardian.userOperation;
+        addGuardianUserOp.signature = smartAccount.signUserOperation(addGuardianUserOp, [ownerPrivateKey], chainId);
 
-    if (!addGuardianResult || !addGuardianResult.success) {
-        console.log("Failed to add Candide Guardian");
-        rl.close();
-        return;
+        console.log("\nAdding Candide Guardian on-chain...");
+        const addGuardianResponse = await smartAccount.sendUserOperation(addGuardianUserOp, bundlerUrl);
+        const addGuardianResult = await addGuardianResponse.included();
+
+        if (!addGuardianResult || !addGuardianResult.success) {
+            console.log("Failed to add Candide Guardian");
+            rl.close();
+            return;
+        }
+        console.log(`Guardian added. tx: ${addGuardianResult.receipt.transactionHash}`);
     }
-    console.log(`Guardian added. tx: ${addGuardianResult.receipt.transactionHash}`);
 
     // Verify setup with getRegistrations()
     const registrationsSiweMessage = custodialGuardianService.getRegistrationsSiweStatementToSign(
