@@ -1,5 +1,4 @@
 import {SocialRecoveryModule} from "abstractionkit";
-import {ethers} from "ethers";
 import { SafeRecoveryServiceSdkError, ensureError } from "./errors";
 import { sendHttpRequest, SocialRecoveryModuleGracePeriodSelector } from "./utils";
 
@@ -226,7 +225,7 @@ export class RecoveryByGuardian {
         {
             account: accountAddress,
             chainId: parseInt(chainId.toString()),
-            nonce: ethers.toQuantity(recoveryNonce)
+            nonce: "0x" + recoveryNonce.toString(16)
         },
         "get"
     ) as RecoveryByGuardianRequest[];

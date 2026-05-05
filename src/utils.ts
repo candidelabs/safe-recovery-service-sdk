@@ -1,5 +1,4 @@
-import {SiweMessage} from "siwe";
-import {ethers} from "ethers";
+import {SiweMessage, generateNonce} from "siwe";
 import { ensureError, HttpErrorCodeDict, SafeRecoveryServiceSdkError } from "./errors";
 import { RecoveryByGuardianRequest } from "./recoveryByGuardian";
 import { AlertsSubscription } from "./alerts";
@@ -23,12 +22,12 @@ export function generateSIWEMessage(
         const issuedAt = new Date().toISOString();
         const siweMessage = new SiweMessage({
           version: "1",
-          address: ethers.getAddress(accountAddress),
+          address: accountAddress,
           domain: siweDomain,
           uri: siweUri,
           statement,
           chainId: Number(chainId),
-          nonce: ethers.hexlify(ethers.randomBytes(24)),
+          nonce: generateNonce(),
           issuedAt
         });
         return siweMessage.prepareMessage();
