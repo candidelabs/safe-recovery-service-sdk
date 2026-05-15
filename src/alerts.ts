@@ -1,5 +1,6 @@
 import { SafeRecoveryServiceSdkError, ensureError } from "./errors";
-import { generateSIWEMessage, sendHttpRequest } from "./utils";
+import { sendHttpRequest } from "./utils";
+import { generateSIWEMessage } from "./siwe";
 
 /**
  * A subscription record for Social Recovery Module alerts.
