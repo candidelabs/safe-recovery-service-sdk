@@ -1,4 +1,5 @@
-import { generateSIWEMessage, getNetworkConfig, sendHttpRequest } from "./utils";
+import { getNetworkConfig, sendHttpRequest } from "./utils";
+import { generateSIWEMessage } from "./siwe";
 import { SafeRecoveryServiceSdkError, ensureError } from "./errors";
 import { RecoveryByGuardianRequest, RecoveryByGuardian } from "./recoveryByGuardian";
 

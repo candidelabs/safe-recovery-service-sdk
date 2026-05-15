@@ -1,5 +1,3 @@
-import {SiweMessage, generateNonce} from "siwe";
-import {getAddress} from "ethers";
 import { ensureError, HttpErrorCodeDict, SafeRecoveryServiceSdkError } from "./errors";
 import { RecoveryByGuardianRequest } from "./recoveryByGuardian";
 import { AlertsSubscription } from "./alerts";
@@ -12,43 +10,6 @@ export enum SocialRecoveryModuleGracePeriodSelector {
 	After7Days = "0x088f6cfD8BB1dDb1BB069CCb3fc1A98927D233f2",
 	After14Days = "0x9BacD92F4687Db306D7ded5d4513a51EA05df25b",
 }
-export function generateSIWEMessage(
-    accountAddress: string,
-    statement: string,
-    chainId: bigint,
-    siweDomain: string,
-    siweUri: string
-): string {
-    try {
-        const issuedAt = new Date().toISOString();
-        const siweMessage = new SiweMessage({
-          version: "1",
-          address: getAddress(accountAddress),
-          domain: siweDomain,
-          uri: siweUri,
-          statement,
-          chainId: Number(chainId),
-          nonce: generateNonce(),
-          issuedAt
-        });
-        return siweMessage.prepareMessage();
-    } catch (err) {
-        const error = ensureError(err);
-
-        throw new SafeRecoveryServiceSdkError(
-            "SIWE_ERROR",
-            error.message,
-            {
-                cause: error,
-                context:{
-                    accountAddress,
-                    statement,
-                }
-            }
-        );
-    }
-}
-
 export type JsonRpcResult =
     NetworkConfig |
     {success: boolean, signer?: string, signature?: string} |
