@@ -80,4 +80,35 @@ describe("generateSIWEMessage", () => {
       expect(err.context).toMatchObject({ accountAddress: "not-an-address", statement: STATEMENT });
     }
   });
+
+  it.each([
+    ["statement with newline", "hello\nworld", DOMAIN, URI],
+    ["statement with tab", "hello\tworld", DOMAIN, URI],
+    ["empty domain", STATEMENT, "", URI],
+    ["domain with spaces", STATEMENT, "bad domain !!", URI],
+    ["non-URI uri", STATEMENT, DOMAIN, "not a uri"],
+  ])(
+    "wraps invalid SIWE field (%s) as SafeRecoveryServiceSdkError SIWE_ERROR",
+    (_label, statement, domain, uri) => {
+      expect.assertions(2);
+      try {
+        generateSIWEMessage(ACCOUNT, statement, 1n, domain, uri);
+      } catch (e) {
+        const err = e as SafeRecoveryServiceSdkError;
+        expect(err).toBeInstanceOf(SafeRecoveryServiceSdkError);
+        expect(err.code).toBe("SIWE_ERROR");
+      }
+    },
+  );
+
+  it("still accepts the SDK's default service:// domain and URI", () => {
+    const msg = generateSIWEMessage(
+      ACCOUNT,
+      STATEMENT,
+      1n,
+      "service://safe-recovery-service",
+      "service://safe-recovery-service",
+    );
+    expect(msg).toContain("service://safe-recovery-service wants you to sign in");
+  });
 });

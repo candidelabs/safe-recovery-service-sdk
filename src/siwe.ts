@@ -5,6 +5,30 @@ const NONCE_ALPHABET =
   "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
 const NONCE_LENGTH = 17;
 
+// Control chars (C0 + DEL) break the single-line EIP-4361 grammar. The old
+// `new SiweMessage(...)` path round-trip-parsed and threw on these; preserve
+// that so invalid input fails fast as SIWE_ERROR rather than producing a
+// message the backend parser rejects later.
+const CONTROL_CHARS = /[\u0000-\u001F\u007F]/;
+
+function validateSiweFields(
+  statement: string,
+  siweDomain: string,
+  siweUri: string,
+): void {
+  if (CONTROL_CHARS.test(statement)) {
+    throw new Error("invalid SIWE statement: control characters not allowed");
+  }
+  if (siweDomain === "" || /\s/.test(siweDomain) || CONTROL_CHARS.test(siweDomain)) {
+    throw new Error(`invalid SIWE domain: ${JSON.stringify(siweDomain)}`);
+  }
+  try {
+    new URL(siweUri);
+  } catch {
+    throw new Error(`invalid SIWE URI: ${JSON.stringify(siweUri)}`);
+  }
+}
+
 function generateNonce(): string {
   const out: string[] = [];
   const buf = new Uint8Array(1);
@@ -28,6 +52,7 @@ export function generateSIWEMessage(
 ): string {
   try {
     const address = getAddress(accountAddress);
+    validateSiweFields(statement, siweDomain, siweUri);
     const issuedAt = new Date().toISOString();
     const nonce = generateNonce();
     return (
