@@ -2,3 +2,72 @@
 **/dist/**
 **/.env
 *.log
+
+# ===========================
+# IDEs and editors
+# ===========================
+
+# JetBrains (IntelliJ IDEA, WebStorm, PyCharm, Rider, CLion, GoLand, Android Studio, etc.)
+.idea/
+*.iml
+*.ipr
+*.iws
+
+# JetBrains Fleet
+.fleet/
+
+# Visual Studio Code
+.vscode/
+*.code-workspace
+.history/
+
+# Visual Studio
+.vs/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# Eclipse
+.metadata/
+.settings/
+.project
+.classpath
+.loadpath
+.recommenders/
+.factorypath
+
+# NetBeans
+nbproject/private/
+nbbuild/
+nbdist/
+.nb-gradle/
+
+# Xcode
+xcuserdata/
+*.xcuserstate
+*.xcscmblueprint
+DerivedData/
+
+# Sublime Text
+*.sublime-workspace
+*.sublime-project
+
+# Vim / Neovim
+*.swp
+*.swo
+*~
+Session.vim
+.netrwhist
+
+# Emacs
+\#*\#
+.#*
+.dir-locals.el
+
+# Zed
+.zed/
+
+# Cursor / Windsurf
+.cursor/
+.windsurf/
